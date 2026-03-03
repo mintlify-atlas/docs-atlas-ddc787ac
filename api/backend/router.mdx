@@ -1,0 +1,393 @@
+---
+title: 'Router'
+description: 'oRPC router configuration and handler definitions'
+icon: 'route'
+---
+
+## Overview
+
+The router defines all API endpoints and their implementations using oRPC (OpenAPI RPC) for type-safe, contract-based API development.
+
+## Router Structure
+
+```typescript
+import { router } from '@c15t/backend';
+
+// Router structure
+const router = {
+  consent: {
+    post: postConsentHandler,
+    showBanner: showConsentBannerHandler,
+    verify: verifyConsentHandler,
+    identify: identifyUserHandler,
+  },
+  meta: {
+    status: statusHandler,
+  },
+};
+```
+
+## Endpoints
+
+### Consent Endpoints
+
+#### POST /consent/set
+
+Records a user's consent preferences.
+
+<ParamField path="subjectId" type="string">
+  The internal subject ID.
+</ParamField>
+
+<ParamField path="externalSubjectId" type="string">
+  External identity provider subject ID.
+</ParamField>
+
+<ParamField path="identityProvider" type="string">
+  The identity provider name (e.g., 'auth0', 'cognito').
+</ParamField>
+
+<ParamField path="domain" type="string" required>
+  The domain where consent is being recorded.
+</ParamField>
+
+<ParamField path="type" type="PolicyType" required>
+  The type of consent policy:
+  - `cookie_banner`
+  - `privacy_policy`
+  - `dpa`
+  - `terms_and_conditions`
+  - `marketing_communications`
+  - `age_verification`
+  - `other`
+</ParamField>
+
+<ParamField path="preferences" type="Record<string, boolean>">
+  Consent preferences as key-value pairs.
+  
+  ```typescript
+  preferences: {
+    necessary: true,
+    measurement: true,
+    marketing: false,
+    functionality: true,
+  }
+  ```
+</ParamField>
+
+<ParamField path="policyId" type="string">
+  The policy ID (required for policy-based consent types).
+</ParamField>
+
+<ParamField path="metadata" type="Record<string, unknown>">
+  Additional metadata to attach to the consent record.
+</ParamField>
+
+<ResponseField name="id" type="string">
+  The consent record ID.
+</ResponseField>
+
+<ResponseField name="subjectId" type="string">
+  The subject ID.
+</ResponseField>
+
+<ResponseField name="domainId" type="string">
+  The domain ID.
+</ResponseField>
+
+<ResponseField name="domain" type="string">
+  The domain name.
+</ResponseField>
+
+<ResponseField name="type" type="PolicyType">
+  The policy type.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  The consent status.
+</ResponseField>
+
+<ResponseField name="recordId" type="string">
+  The consent record ID.
+</ResponseField>
+
+<ResponseField name="givenAt" type="Date">
+  When consent was given.
+</ResponseField>
+
+#### GET /show-consent-banner
+
+Determines if a consent banner should be shown based on geo-location.
+
+<ResponseField name="showConsentBanner" type="boolean">
+  Whether to show the consent banner.
+</ResponseField>
+
+<ResponseField name="jurisdiction" type="JurisdictionInfo">
+  Information about the applicable jurisdiction.
+  
+  <Expandable title="jurisdiction properties">
+    <ResponseField name="code" type="string">
+      Jurisdiction code (e.g., 'GDPR', 'CCPA').
+    </ResponseField>
+    
+    <ResponseField name="name" type="string">
+      Human-readable jurisdiction name.
+    </ResponseField>
+    
+    <ResponseField name="requiresConsent" type="boolean">
+      Whether this jurisdiction requires explicit consent.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="location" type="object">
+  Detected user location.
+  
+  <Expandable title="location properties">
+    <ResponseField name="countryCode" type="string | null">
+      ISO country code.
+    </ResponseField>
+    
+    <ResponseField name="regionCode" type="string | null">
+      Region/state code.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="translations" type="object">
+  Localized translations for the banner.
+  
+  <Expandable title="translations properties">
+    <ResponseField name="language" type="string">
+      Language code (e.g., 'en', 'de').
+    </ResponseField>
+    
+    <ResponseField name="translations" type="Translations">
+      Translation strings for all UI elements.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="branding" type="'c15t' | 'consent' | 'none'">
+  Branding to display.
+</ResponseField>
+
+#### POST /consent/verify
+
+Verifies if a user has given valid consent.
+
+<ParamField path="subjectId" type="string">
+  The internal subject ID.
+</ParamField>
+
+<ParamField path="externalSubjectId" type="string">
+  External identity provider subject ID.
+</ParamField>
+
+<ParamField path="domain" type="string" required>
+  The domain to verify consent for.
+</ParamField>
+
+<ParamField path="type" type="PolicyType" required>
+  The type of consent policy to verify.
+</ParamField>
+
+<ParamField path="policyId" type="string">
+  The specific policy ID to verify.
+</ParamField>
+
+<ParamField path="preferences" type="string[]">
+  Array of preference codes to verify (e.g., ['measurement', 'marketing']).
+</ParamField>
+
+<ResponseField name="isValid" type="boolean">
+  Whether the consent is valid.
+</ResponseField>
+
+<ResponseField name="reasons" type="string[]">
+  Reasons why consent is invalid (if applicable).
+</ResponseField>
+
+<ResponseField name="consent" type="object">
+  The consent record details (if found).
+  
+  <Expandable title="consent properties">
+    <ResponseField name="id" type="string">
+      Consent record ID.
+    </ResponseField>
+    
+    <ResponseField name="purposeIds" type="string[]">
+      Array of consented purpose IDs.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+#### POST /consent/identify
+
+Identifies or links a user with external identity providers.
+
+<ParamField path="subjectId" type="string">
+  The internal subject ID.
+</ParamField>
+
+<ParamField path="externalSubjectId" type="string" required>
+  External identity provider subject ID.
+</ParamField>
+
+<ParamField path="identityProvider" type="string" required>
+  The identity provider name.
+</ParamField>
+
+<ResponseField name="subjectId" type="string">
+  The internal subject ID (created or existing).
+</ResponseField>
+
+<ResponseField name="linked" type="boolean">
+  Whether the external identity was successfully linked.
+</ResponseField>
+
+### Meta Endpoints
+
+#### GET /meta/status
+
+Returns the health status of the c15t instance.
+
+<ResponseField name="status" type="'ok' | 'error'">
+  The instance status.
+</ResponseField>
+
+<ResponseField name="version" type="string">
+  The c15t package version.
+</ResponseField>
+
+<ResponseField name="timestamp" type="number">
+  Server timestamp.
+</ResponseField>
+
+## Direct Router Usage
+
+You can use the router directly for type-safe API calls:
+
+```typescript
+import { c15tInstance } from '@c15t/backend';
+import { kyselyAdapter } from '@c15t/backend/adapters/kysely';
+import { db } from './db';
+
+const instance = c15tInstance({
+  adapter: kyselyAdapter(db),
+  trustedOrigins: ['*'],
+});
+
+// Access router for type inference
+const { router } = instance;
+
+// Use with oRPC client
+import { createClient } from '@orpc/client';
+
+const client = createClient({
+  baseURL: 'http://localhost:3000/api/c15t',
+  router: router,
+});
+
+// Type-safe API calls
+const result = await client.consent.post({
+  domain: 'example.com',
+  type: 'cookie_banner',
+  preferences: {
+    necessary: true,
+    measurement: true,
+  },
+});
+```
+
+## Error Handling
+
+All endpoints use standardized error responses:
+
+```typescript
+type ErrorResponse = {
+  code: string;
+  message: string;
+  status: number;
+  data?: Record<string, unknown>;
+  defined: boolean;
+};
+```
+
+### Common Error Codes
+
+- `INPUT_VALIDATION_FAILED` (422): Invalid input parameters
+- `SUBJECT_NOT_FOUND` (404): Subject does not exist
+- `DOMAIN_NOT_FOUND` (404): Domain does not exist
+- `POLICY_NOT_FOUND` (404): Policy does not exist
+- `CONSENT_CREATION_FAILED` (500): Failed to create consent record
+- `INTERNAL_SERVER_ERROR` (500): Unexpected server error
+
+## Custom Error Handling
+
+```typescript
+try {
+  const response = await instance.handler(request);
+  
+  if (!response.ok) {
+    const error = await response.json();
+    console.error('API Error:', error.code, error.message);
+    
+    // Handle specific errors
+    if (error.code === 'SUBJECT_NOT_FOUND') {
+      // Create new subject
+    }
+  }
+} catch (error) {
+  console.error('Request failed:', error);
+}
+```
+
+## Middleware
+
+The router automatically applies the following middleware:
+
+- **CORS**: Cross-origin request handling
+- **IP Detection**: Extracts client IP from headers
+- **Telemetry**: Request tracking and tracing
+- **Error Handling**: Standardized error responses
+
+## OpenAPI Integration
+
+The router automatically generates OpenAPI specs:
+
+```typescript
+const spec = await instance.getOpenAPISpec();
+
+// Access spec details
+console.log(spec.info.title);
+console.log(spec.paths);
+console.log(spec.components.schemas);
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Use Type Inference" icon="wand-magic-sparkles">
+    Leverage TypeScript to infer request and response types from the router.
+  </Card>
+  
+  <Card title="Handle Errors" icon="triangle-exclamation">
+    Always handle potential errors from API endpoints.
+  </Card>
+  
+  <Card title="Validate Input" icon="check">
+    Use the contract schemas to validate input before sending requests.
+  </Card>
+  
+  <Card title="Monitor Performance" icon="chart-line">
+    Use telemetry data to monitor endpoint performance.
+  </Card>
+</CardGroup>
+
+## Related
+
+- [Core API](/api/backend/core)
+- [Contracts](/api/backend/contracts)
+- [Database Adapters](/api/backend/database-adapters)

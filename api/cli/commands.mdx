@@ -1,0 +1,315 @@
+---
+title: CLI Commands
+description: Complete reference for all c15t CLI commands
+icon: terminal
+---
+
+## Overview
+
+The c15t CLI provides an interactive and command-line interface for setting up and managing your c15t integration.
+
+## Installation
+
+```bash
+npm install -g @c15t/cli
+# or
+bun install -g @c15t/cli
+# or
+yarn global add @c15t/cli
+```
+
+## Usage
+
+```bash
+c15t [command] [options]
+```
+
+## Global Flags
+
+These flags are available for all commands:
+
+<ParamField path="--help, -h" type="boolean" default="false">
+  Show help message and available commands.
+</ParamField>
+
+<ParamField path="--version, -v" type="boolean" default="false">
+  Show the CLI version.
+</ParamField>
+
+<ParamField path="--logger" type="string" default="info">
+  Set log level. Options: `fatal`, `error`, `warn`, `info`, `debug`.
+</ParamField>
+
+<ParamField path="--config" type="string">
+  Specify path to configuration file.
+  
+  **Example:** `--config ./custom-config.ts`
+</ParamField>
+
+<ParamField path="-y" type="boolean" default="false">
+  Skip confirmation prompts. Use with caution.
+</ParamField>
+
+<ParamField path="--no-telemetry" type="boolean" default="false">
+  Disable telemetry data collection.
+</ParamField>
+
+<ParamField path="--telemetry-debug" type="boolean" default="false">
+  Enable debug mode for telemetry (shows detailed telemetry logs).
+</ParamField>
+
+## Available Commands
+
+### `generate`
+
+Setup c15t in your project with guided configuration.
+
+```bash
+c15t generate
+```
+
+This command:
+- Detects your project framework (React, Next.js, etc.)
+- Guides you through configuration options
+- Generates necessary config files
+- Optionally installs dependencies
+- Creates example components
+
+**Interactive Mode:**
+When run without arguments, you'll be prompted to select:
+- Storage mode (Hosted, Offline, Self-hosted, Custom)
+- Framework-specific options
+- Installation preferences
+
+**See also:** [generate command reference](/api/cli/generate)
+
+---
+
+### `self-host`
+
+Manage self-hosted c15t backend deployments.
+
+```bash
+c15t self-host [subcommand]
+```
+
+#### Subcommands:
+
+- **`generate`** - Generate code for self-hosted setup
+- **`migrate`** - Run database migrations
+
+**Interactive Mode:**
+When run without a subcommand, you'll be prompted to select which operation to perform.
+
+**Examples:**
+
+```bash
+# Interactive mode
+c15t self-host
+
+# Direct command
+c15t self-host generate
+c15t self-host migrate
+```
+
+**See also:**
+- [migrate command reference](/api/cli/migrate)
+
+---
+
+### `github`
+
+Open the c15t GitHub repository.
+
+```bash
+c15t github
+```
+
+This command:
+- Opens https://github.com/c15t/c15t in your browser
+- Shows a message encouraging you to star the project
+
+---
+
+### `docs`
+
+Open the c15t documentation in your browser.
+
+```bash
+c15t docs
+```
+
+This command opens https://c15t.com/docs in your default browser.
+
+---
+
+## Interactive Mode
+
+When you run `c15t` without any command, an interactive menu appears:
+
+```bash
+c15t
+```
+
+**Output:**
+```
+? Which command would you like to run?
+❯ Generate (Recommended) - Add c15t to your project
+  Self Host - Host c15t backend on your own infra
+  GitHub - Star us on GitHub
+  c15t docs - Open documentation
+  exit - Close the CLI
+```
+
+Use arrow keys to navigate and Enter to select.
+
+## Examples
+
+### Basic Setup
+
+```bash
+# Install CLI globally
+bun install -g @c15t/cli
+
+# Run interactive setup
+c15t generate
+```
+
+### Self-Hosted Setup
+
+```bash
+# Generate self-hosted configuration
+c15t self-host generate
+
+# Run migrations
+c15t self-host migrate
+```
+
+### With Custom Config
+
+```bash
+c15t generate --config ./my-config.ts
+```
+
+### Silent Mode (No Prompts)
+
+```bash
+c15t generate -y
+```
+
+### Debug Mode
+
+```bash
+c15t generate --logger debug
+```
+
+### Disable Telemetry
+
+```bash
+c15t generate --no-telemetry
+
+# Or set environment variable
+export C15T_TELEMETRY_DISABLED=1
+c15t generate
+```
+
+## Environment Variables
+
+<ParamField path="C15T_TELEMETRY_DISABLED" type="boolean" default="false">
+  Disable telemetry when set to `1` or `true`.
+</ParamField>
+
+## Exit Codes
+
+- **0** - Success
+- **1** - Error or user cancellation
+
+## Terminal Output Examples
+
+### Successful Generation
+
+```bash
+$ c15t generate
+
+   _______ ____  ______
+  / ____/ / __ \/_  __/
+ / /   / / /_/ / / /   
+/ /___/ /\____/ / /    
+\____/_/_/     /_/     
+
+Starting onboarding process...
+✓ Project detected: Next.js
+? How would you like to store consent decisions? › Hosted c15t (consent.io)
+✓ Configuration generated
+✓ Dependencies installed
+🚀 Setup completed successfully!
+```
+
+### Migration Output
+
+```bash
+$ c15t self-host migrate
+
+Starting migration process...
+✓ Loading c15t-backend.config.ts
+✓ Connected to database
+✓ Running migrations
+  → Created table: subjects
+  → Created table: domains
+  → Created table: consent_policies
+  → Created table: consents
+  → Created table: consent_records
+  → Created table: consent_purposes
+  → Created table: audit_logs
+✓ Migration completed successfully
+```
+
+## Troubleshooting
+
+### Permission Issues
+
+If you encounter permission errors:
+
+```bash
+# Use sudo for global installation (Linux/Mac)
+sudo bun install -g @c15t/cli
+
+# Or install locally
+bun install @c15t/cli
+npx c15t generate
+```
+
+### Framework Not Detected
+
+```bash
+# Ensure you're in the correct directory
+cd /path/to/your/project
+c15t generate
+```
+
+### Telemetry Concerns
+
+The CLI collects anonymous usage data to help improve the tool. To disable:
+
+```bash
+# Temporarily
+c15t generate --no-telemetry
+
+# Permanently
+export C15T_TELEMETRY_DISABLED=1
+# Add to ~/.bashrc or ~/.zshrc
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Init Command" icon="play" href="/api/cli/init">
+    Detailed init command reference
+  </Card>
+  <Card title="Generate Command" icon="code" href="/api/cli/generate">
+    Complete generate command guide
+  </Card>
+  <Card title="Migrate Command" icon="database" href="/api/cli/migrate">
+    Database migration reference
+  </Card>
+</CardGroup>

@@ -1,0 +1,533 @@
+---
+title: Migrate Command
+description: Run database migrations for self-hosted c15t deployments
+icon: database
+---
+
+## Overview
+
+The `migrate` command runs database migrations for self-hosted c15t backends. It reads your backend configuration, connects to your database, and applies the necessary schema changes.
+
+## Usage
+
+```bash
+c15t self-host migrate
+```
+
+## Prerequisites
+
+1. **Backend Configuration**: You must have a `c15t-backend.config.ts` file in your project.
+2. **Database Connection**: Your database must be accessible and credentials configured.
+3. **Dependencies**: Required database adapter packages must be installed.
+
+## What It Does
+
+1. **Locates Backend Config**: Finds or creates `c15t-backend.config.ts`
+2. **Installs Dependencies**: Installs required database adapter packages if needed
+3. **Loads Configuration**: Loads your database configuration
+4. **Connects to Database**: Establishes connection to your database
+5. **Runs Migrations**: Applies schema migrations
+6. **Generates ORM Files**: Creates ORM-specific files if applicable (Prisma, Drizzle)
+
+## Configuration File
+
+### Required: `c15t-backend.config.ts`
+
+```typescript
+import { defineBackendConfig } from '@c15t/backend';
+
+export const backendConfig = defineBackendConfig({
+  database: {
+    type: 'postgres',
+    connectionString: process.env.DATABASE_URL,
+  },
+});
+```
+
+### Supported Databases
+
+<AccordionGroup>
+  <Accordion title="PostgreSQL">
+    ```typescript
+    {
+      database: {
+        type: 'postgres',
+        connectionString: 'postgresql://user:pass@host:5432/dbname',
+      }
+    }
+    ```
+    
+    **Dependencies installed:**
+    - `pg` (for raw SQL/Kysely)
+    - `@prisma/client` (if using Prisma)
+    - `drizzle-orm` (if using Drizzle)
+  </Accordion>
+  
+  <Accordion title="MySQL">
+    ```typescript
+    {
+      database: {
+        type: 'mysql',
+        connectionString: 'mysql://user:pass@host:3306/dbname',
+      }
+    }
+    ```
+    
+    **Dependencies installed:**
+    - `mysql2`
+    - ORM-specific packages if needed
+  </Accordion>
+  
+  <Accordion title="SQLite">
+    ```typescript
+    {
+      database: {
+        type: 'sqlite',
+        filename: './data/c15t.db',
+      }
+    }
+    ```
+    
+    **Dependencies installed:**
+    - `better-sqlite3`
+    - ORM-specific packages if needed
+  </Accordion>
+  
+  <Accordion title="Cloudflare D1">
+    ```typescript
+    {
+      database: {
+        type: 'd1',
+        binding: env.DB, // In Cloudflare Worker
+      }
+    }
+    ```
+    
+    **Dependencies installed:**
+    - `@cloudflare/workers-types`
+    - ORM-specific packages if needed
+  </Accordion>
+</AccordionGroup>
+
+## Migration Process
+
+### Terminal Output Example
+
+```bash
+$ c15t self-host migrate
+
+Starting migration process...
+✓ Found c15t-backend.config.ts
+✓ Loaded configuration
+✓ Connected to PostgreSQL database
+✓ Running migrations
+
+  Creating tables:
+  ✓ subjects
+  ✓ domains
+  ✓ consent_policies
+  ✓ consents
+  ✓ consent_records
+  ✓ consent_purposes
+  ✓ audit_logs
+
+  Creating indexes:
+  ✓ idx_consents_subject_domain
+  ✓ idx_consents_domain_policy
+  ✓ idx_consent_records_consent
+  ✓ idx_consent_purposes_record
+  ✓ idx_audit_logs_consent
+
+✓ Migration completed successfully!
+
+Database schema is up to date.
+```
+
+### With Prisma
+
+```bash
+$ c15t self-host migrate
+
+Starting migration process...
+✓ Found c15t-backend.config.ts
+⠹ Installing @prisma/client...
+✓ Dependencies installed
+✓ Loaded configuration
+✓ Generating Prisma schema
+  → schema.prisma created
+✓ Running Prisma migrations
+  → Migration '20240301_init' applied
+✓ Generating Prisma Client
+✓ Migration completed successfully!
+
+Prisma schema generated at: ./prisma/schema.prisma
+Run 'npx prisma studio' to view your data.
+```
+
+### With Drizzle
+
+```bash
+$ c15t self-host migrate
+
+Starting migration process...
+✓ Found c15t-backend.config.ts
+⠹ Installing drizzle-orm...
+✓ Dependencies installed
+✓ Loaded configuration
+✓ Generating Drizzle schema
+  → drizzle/schema.ts created
+✓ Running Drizzle migrations
+  → Applied 7 migrations
+✓ Migration completed successfully!
+
+Drizzle schema generated at: ./drizzle/schema.ts
+```
+
+### With Kysely
+
+```bash
+$ c15t self-host migrate
+
+Starting migration process...
+✓ Found c15t-backend.config.ts
+✓ Loaded configuration
+✓ Generating Kysely migrations
+  → migrations/001_initial_schema.ts created
+✓ Running Kysely migrations
+  → Executed 1 migration
+✓ Migration completed successfully!
+
+Migrations generated at: ./migrations/
+```
+
+## Database Schema
+
+The migration creates the following tables:
+
+### Core Tables
+
+<AccordionGroup>
+  <Accordion title="subjects">
+    Stores user/subject information.
+    
+    ```sql
+    CREATE TABLE subjects (
+      id UUID PRIMARY KEY,
+      external_id VARCHAR(255),
+      identity_provider VARCHAR(100),
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    );
+    
+    CREATE INDEX idx_subjects_external_id ON subjects(external_id);
+    ```
+  </Accordion>
+  
+  <Accordion title="domains">
+    Stores registered domains.
+    
+    ```sql
+    CREATE TABLE domains (
+      id UUID PRIMARY KEY,
+      name VARCHAR(255) UNIQUE NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+    ```
+  </Accordion>
+  
+  <Accordion title="consent_policies">
+    Stores consent policies.
+    
+    ```sql
+    CREATE TABLE consent_policies (
+      id UUID PRIMARY KEY,
+      domain_id UUID REFERENCES domains(id),
+      type VARCHAR(50) NOT NULL,
+      version VARCHAR(50),
+      is_active BOOLEAN DEFAULT true,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+    
+    CREATE INDEX idx_policies_domain_type ON consent_policies(domain_id, type);
+    ```
+  </Accordion>
+  
+  <Accordion title="consents">
+    Main consent records.
+    
+    ```sql
+    CREATE TABLE consents (
+      id UUID PRIMARY KEY,
+      subject_id UUID REFERENCES subjects(id),
+      domain_id UUID REFERENCES domains(id),
+      policy_id UUID REFERENCES consent_policies(id),
+      status VARCHAR(50) DEFAULT 'active',
+      given_at TIMESTAMP DEFAULT NOW(),
+      revoked_at TIMESTAMP,
+      metadata JSONB
+    );
+    
+    CREATE INDEX idx_consents_subject ON consents(subject_id);
+    CREATE INDEX idx_consents_domain ON consents(domain_id);
+    CREATE INDEX idx_consents_policy ON consents(policy_id);
+    ```
+  </Accordion>
+  
+  <Accordion title="consent_records">
+    Historical consent records.
+    
+    ```sql
+    CREATE TABLE consent_records (
+      id UUID PRIMARY KEY,
+      consent_id UUID REFERENCES consents(id),
+      action VARCHAR(50) NOT NULL,
+      recorded_at TIMESTAMP DEFAULT NOW(),
+      metadata JSONB
+    );
+    
+    CREATE INDEX idx_records_consent ON consent_records(consent_id);
+    ```
+  </Accordion>
+  
+  <Accordion title="consent_purposes">
+    Specific consent purposes (e.g., marketing, analytics).
+    
+    ```sql
+    CREATE TABLE consent_purposes (
+      id UUID PRIMARY KEY,
+      record_id UUID REFERENCES consent_records(id),
+      purpose_code VARCHAR(100) NOT NULL,
+      consented BOOLEAN NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+    
+    CREATE INDEX idx_purposes_record ON consent_purposes(record_id);
+    ```
+  </Accordion>
+  
+  <Accordion title="audit_logs">
+    Audit trail for all consent operations.
+    
+    ```sql
+    CREATE TABLE audit_logs (
+      id UUID PRIMARY KEY,
+      consent_id UUID REFERENCES consents(id),
+      action VARCHAR(100) NOT NULL,
+      actor_id VARCHAR(255),
+      metadata JSONB,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+    
+    CREATE INDEX idx_audit_consent ON audit_logs(consent_id);
+    CREATE INDEX idx_audit_created ON audit_logs(created_at);
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## ORM-Specific Output
+
+### Prisma Schema
+
+Generated at `prisma/schema.prisma`:
+
+```prisma
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Subject {
+  id               String    @id @default(uuid())
+  externalId       String?   @map("external_id")
+  identityProvider String?   @map("identity_provider")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  consents         Consent[]
+
+  @@map("subjects")
+}
+
+// ... other models
+```
+
+### Drizzle Schema
+
+Generated at `drizzle/schema.ts`:
+
+```typescript
+import { pgTable, uuid, varchar, timestamp, boolean, jsonb } from 'drizzle-orm/pg-core';
+
+export const subjects = pgTable('subjects', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  externalId: varchar('external_id', { length: 255 }),
+  identityProvider: varchar('identity_provider', { length: 100 }),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// ... other tables
+```
+
+### Kysely Types
+
+Generated at `kysely/types.ts`:
+
+```typescript
+import type { ColumnType } from 'kysely';
+
+export interface Database {
+  subjects: SubjectsTable;
+  domains: DomainsTable;
+  consent_policies: ConsentPoliciesTable;
+  consents: ConsentsTable;
+  consent_records: ConsentRecordsTable;
+  consent_purposes: ConsentPurposesTable;
+  audit_logs: AuditLogsTable;
+}
+
+export interface SubjectsTable {
+  id: ColumnType<string, string, never>;
+  external_id: string | null;
+  identity_provider: string | null;
+  created_at: ColumnType<Date, string | Date | undefined, never>;
+  updated_at: ColumnType<Date, string | Date | undefined, string | Date>;
+}
+
+// ... other table types
+```
+
+## Flags
+
+All [global flags](/api/cli/commands#global-flags) are available.
+
+### Useful Flags
+
+```bash
+# Debug mode to see detailed logs
+c15t self-host migrate --logger debug
+
+# Use custom config file
+c15t self-host migrate --config ./custom-backend.config.ts
+
+# Skip confirmation prompts
+c15t self-host migrate -y
+```
+
+## Troubleshooting
+
+### Config File Not Found
+
+```bash
+✗ No backend config found.
+? Would you like to create c15t-backend.config.ts? (Y/n) › Yes
+```
+
+The CLI will guide you through creating the config file.
+
+### Database Connection Failed
+
+```bash
+✗ Failed to connect to database
+Error: Connection refused at localhost:5432
+```
+
+**Solutions:**
+1. Check database is running: `psql -U user -d dbname`
+2. Verify connection string in `.env`
+3. Check firewall/network settings
+4. Ensure database exists
+
+### Missing Dependencies
+
+```bash
+⠹ Installing required dependencies...
+✓ Installed: pg, @types/pg
+```
+
+The CLI automatically installs missing database adapters.
+
+### Migration Already Applied
+
+```bash
+✓ Database schema is already up to date.
+No migrations to run.
+```
+
+This is normal - migrations are idempotent.
+
+### Permission Errors
+
+```bash
+✗ Permission denied: Cannot create table
+```
+
+**Solution:** Ensure your database user has CREATE permissions:
+
+```sql
+GRANT CREATE ON DATABASE your_db TO your_user;
+```
+
+## Best Practices
+
+### 1. Use Environment Variables
+
+```bash
+# .env.local
+DATABASE_URL=postgresql://user:pass@localhost:5432/c15t
+```
+
+```typescript
+// c15t-backend.config.ts
+export const backendConfig = defineBackendConfig({
+  database: {
+    type: 'postgres',
+    connectionString: process.env.DATABASE_URL,
+  },
+});
+```
+
+### 2. Run Migrations in CI/CD
+
+```yaml
+# .github/workflows/deploy.yml
+steps:
+  - name: Run migrations
+    run: bun run c15t self-host migrate -y
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+```
+
+### 3. Backup Before Migrating
+
+```bash
+# PostgreSQL
+pg_dump -U user dbname > backup.sql
+
+# MySQL
+mysqldump -u user -p dbname > backup.sql
+
+# SQLite
+cp c15t.db c15t.db.backup
+```
+
+### 4. Test Migrations Locally First
+
+```bash
+# Use a local/dev database first
+DATABASE_URL=postgresql://localhost/c15t_dev c15t self-host migrate
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Generate Command" icon="code" href="/api/cli/generate">
+    Generate self-hosted configuration
+  </Card>
+  <Card title="Self-Hosting Guide" icon="server" href="/self-host/v2/quickstart">
+    Complete self-hosting documentation
+  </Card>
+</CardGroup>

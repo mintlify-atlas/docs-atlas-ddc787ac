@@ -1,0 +1,442 @@
+---
+title: Hooks
+description: React hooks for accessing and managing consent state in your application.
+---
+
+The c15t React package provides several hooks for managing consent state and UI behavior throughout your application.
+
+## useConsentManager
+
+Access and manage consent state throughout your application.
+
+### Import
+
+```tsx
+import { useConsentManager } from '@c15t/react';
+```
+
+### Usage
+
+```tsx
+import { useConsentManager } from '@c15t/react';
+
+function MyComponent() {
+  const {
+    hasConsent,
+    setConsent,
+    openPrivacyDialog,
+    isPrivacyDialogOpen,
+    gdprConsents,
+    region,
+  } = useConsentManager();
+  
+  return (
+    <div>
+      <p>Analytics consent: {hasConsent('analytics') ? 'Yes' : 'No'}</p>
+      <button onClick={() => openPrivacyDialog()}>Manage Preferences</button>
+    </div>
+  );
+}
+```
+
+### Returns
+
+The hook returns the complete consent state object with the following properties:
+
+<ParamField path="hasConsent" type="(category: string) => boolean">
+  Check if consent has been granted for a specific category.
+</ParamField>
+
+<ParamField path="setConsent" type="(consents: Record<string, boolean>) => Promise<void>">
+  Update consent preferences for multiple categories.
+</ParamField>
+
+<ParamField path="gdprConsents" type="Record<string, boolean>">
+  Object containing all current consent states by category.
+</ParamField>
+
+<ParamField path="openPrivacyDialog" type="() => void">
+  Open the consent manager dialog.
+</ParamField>
+
+<ParamField path="closePrivacyDialog" type="() => void">
+  Close the consent manager dialog.
+</ParamField>
+
+<ParamField path="isPrivacyDialogOpen" type="boolean">
+  Whether the consent manager dialog is currently open.
+</ParamField>
+
+<ParamField path="openCookieBanner" type="() => void">
+  Open the cookie banner.
+</ParamField>
+
+<ParamField path="closeCookieBanner" type="() => void">
+  Close the cookie banner.
+</ParamField>
+
+<ParamField path="isCookieBannerOpen" type="boolean">
+  Whether the cookie banner is currently visible.
+</ParamField>
+
+<ParamField path="region" type="string | undefined">
+  The detected region code (e.g., 'US', 'EU').
+</ParamField>
+
+<ParamField path="country" type="string | undefined">
+  The detected country code.
+</ParamField>
+
+<ParamField path="isGdprRegion" type="boolean">
+  Whether the user is in a GDPR-regulated region.
+</ParamField>
+
+<ParamField path="manager" type="ConsentManager | undefined">
+  The underlying consent manager instance (if available).
+</ParamField>
+
+### Examples
+
+#### Check Consent Before Loading Analytics
+
+```tsx
+import { useEffect } from 'react';
+import { useConsentManager } from '@c15t/react';
+
+function Analytics() {
+  const { hasConsent } = useConsentManager();
+  
+  useEffect(() => {
+    if (hasConsent('analytics')) {
+      // Load analytics script
+      console.log('Loading analytics...');
+    }
+  }, [hasConsent]);
+  
+  return null;
+}
+```
+
+#### Programmatically Update Consents
+
+```tsx
+import { useConsentManager } from '@c15t/react';
+
+function ConsentToggle() {
+  const { gdprConsents, setConsent } = useConsentManager();
+  
+  const toggleAnalytics = async () => {
+    await setConsent({
+      analytics: !gdprConsents.analytics,
+    });
+  };
+  
+  return (
+    <button onClick={toggleAnalytics}>
+      Analytics: {gdprConsents.analytics ? 'On' : 'Off'}
+    </button>
+  );
+}
+```
+
+#### Open Dialog from Custom Button
+
+```tsx
+import { useConsentManager } from '@c15t/react';
+
+function SettingsButton() {
+  const { openPrivacyDialog } = useConsentManager();
+  
+  return (
+    <button onClick={() => openPrivacyDialog()}>
+      Manage Cookie Preferences
+    </button>
+  );
+}
+```
+
+---
+
+## useTranslations
+
+Access translations for the current language.
+
+### Import
+
+```tsx
+import { useTranslations } from '@c15t/react';
+```
+
+### Usage
+
+```tsx
+import { useTranslations } from '@c15t/react';
+
+function CustomBanner() {
+  const { cookieBanner, common } = useTranslations();
+  
+  return (
+    <div>
+      <h2>{cookieBanner.title}</h2>
+      <p>{cookieBanner.description}</p>
+      <button>{common.acceptAll}</button>
+    </div>
+  );
+}
+```
+
+### Returns
+
+Returns a `Translations` object with the following structure:
+
+<ParamField path="cookieBanner" type="object">
+  Translations for the cookie banner component.
+  
+  Properties:
+  - `title`: string
+  - `description`: string
+</ParamField>
+
+<ParamField path="consentManagerDialog" type="object">
+  Translations for the consent manager dialog.
+  
+  Properties:
+  - `title`: string
+  - `description`: string
+  - Various other dialog-specific strings
+</ParamField>
+
+<ParamField path="consentTypes" type="object">
+  Translations for consent category names and descriptions.
+  
+  Properties for each category:
+  - `name`: string
+  - `description`: string
+</ParamField>
+
+<ParamField path="common" type="object">
+  Common translations used across components.
+  
+  Properties:
+  - `acceptAll`: string
+  - `rejectAll`: string
+  - `customize`: string
+  - `save`: string
+  - And more...
+</ParamField>
+
+### Example: Custom Translations
+
+```tsx
+import { ConsentManagerProvider } from '@c15t/react';
+
+function App() {
+  return (
+    <ConsentManagerProvider
+      options={{
+        mode: 'c15t',
+        translations: {
+          defaultLanguage: 'es',
+          translations: {
+            es: {
+              cookieBanner: {
+                title: 'Gestión de Cookies',
+                description: 'Utilizamos cookies para mejorar su experiencia.',
+              },
+              common: {
+                acceptAll: 'Aceptar todo',
+                rejectAll: 'Rechazar todo',
+                customize: 'Personalizar',
+              },
+            },
+          },
+        },
+      }}
+    >
+      <YourApp />
+    </ConsentManagerProvider>
+  );
+}
+```
+
+---
+
+## useFocusTrap
+
+Manage focus trapping within a container element.
+
+### Import
+
+```tsx
+import { useFocusTrap } from '@c15t/react';
+```
+
+### Usage
+
+```tsx
+import { useRef } from 'react';
+import { useFocusTrap } from '@c15t/react';
+
+function Modal({ isOpen }: { isOpen: boolean }) {
+  const modalRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(isOpen, modalRef);
+  
+  if (!isOpen) return null;
+  
+  return (
+    <div ref={modalRef} role="dialog">
+      <h2>Modal Title</h2>
+      <button>Action 1</button>
+      <button>Action 2</button>
+      <button>Close</button>
+    </div>
+  );
+}
+```
+
+### Parameters
+
+<ParamField path="shouldTrap" type="boolean" required>
+  Boolean indicating whether focus should be trapped.
+</ParamField>
+
+<ParamField path="containerRef" type="RefObject<HTMLElement> | null" required>
+  Reference to the container element where focus should be trapped.
+</ParamField>
+
+### Behavior
+
+- Stores the previously focused element to restore focus later
+- Automatically focuses the first focusable element in the container
+- Cycles focus within the container when Tab/Shift+Tab is pressed
+- Restores focus to the previous element when trap is disabled
+- Handles all standard focusable elements (buttons, inputs, links, etc.)
+
+---
+
+## useColorScheme
+
+Manage color scheme preferences for components.
+
+### Import
+
+```tsx
+import { useColorScheme } from '@c15t/react';
+```
+
+### Usage
+
+```tsx
+import { useColorScheme } from '@c15t/react';
+
+function App() {
+  useColorScheme('system');
+  
+  return <div>Your app content</div>;
+}
+```
+
+### Parameters
+
+<ParamField path="colorScheme" type="'light' | 'dark' | 'system' | null">
+  The color scheme preference:
+  - `'light'`: Force light mode
+  - `'dark'`: Force dark mode
+  - `'system'`: Follow system preference
+  - `null` or `undefined`: Use default behavior (detects `.dark` class)
+</ParamField>
+
+### Behavior
+
+The hook manages the `c15t-dark` class on the document element:
+
+- **light**: Removes `c15t-dark` class
+- **dark**: Adds `c15t-dark` class
+- **system**: Adds/removes based on `prefers-color-scheme` media query
+- **default**: Syncs with existing `.dark` class on document element
+
+### Examples
+
+#### Force Dark Mode
+
+```tsx
+import { useColorScheme } from '@c15t/react';
+
+function App() {
+  useColorScheme('dark');
+  return <YourApp />;
+}
+```
+
+#### Follow System Preference
+
+```tsx
+import { useColorScheme } from '@c15t/react';
+
+function App() {
+  useColorScheme('system');
+  return <YourApp />;
+}
+```
+
+#### Use with Provider
+
+```tsx
+import { ConsentManagerProvider } from '@c15t/react';
+
+function App() {
+  return (
+    <ConsentManagerProvider
+      options={{
+        mode: 'c15t',
+        react: {
+          colorScheme: 'system',
+        },
+      }}
+    >
+      <YourApp />
+    </ConsentManagerProvider>
+  );
+}
+```
+
+---
+
+## Error Handling
+
+All hooks that access consent context will throw an error if used outside of a `ConsentManagerProvider`:
+
+```tsx
+import { useConsentManager } from '@c15t/react';
+
+function MyComponent() {
+  const consent = useConsentManager(); // Error: must be used within ConsentManagerProvider
+  // ...
+}
+```
+
+Make sure to wrap your components with `ConsentManagerProvider`:
+
+```tsx
+import { ConsentManagerProvider } from '@c15t/react';
+import MyComponent from './MyComponent';
+
+function App() {
+  return (
+    <ConsentManagerProvider options={{ mode: 'c15t' }}>
+      <MyComponent /> {/* Now hooks will work */}
+    </ConsentManagerProvider>
+  );
+}
+```
+
+## Type Definitions
+
+```tsx
+import type { Translations } from '@c15t/react';
+
+// useConsentManager return type is inferred from PrivacyConsentState
+// useTranslations returns Translations
+// useFocusTrap returns void
+// useColorScheme returns void
+```

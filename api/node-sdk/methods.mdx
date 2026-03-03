@@ -1,0 +1,345 @@
+---
+title: SDK Methods
+description: Complete reference for all c15t Node SDK methods
+icon: function
+---
+
+## Overview
+
+The c15t Node SDK client provides methods organized into two main namespaces:
+
+- **`consent`** - Consent management operations
+- **`meta`** - Service metadata and health checks
+
+## Consent Methods
+
+### `client.consent.post()`
+
+Records a user's consent preferences and creates necessary consent records.
+
+#### Parameters
+
+<ParamField path="domain" type="string" required>
+  The domain for which consent is being recorded.
+</ParamField>
+
+<ParamField path="type" type="PolicyType" required>
+  The type of consent being recorded. One of:
+  - `'cookie_banner'`
+  - `'privacy_policy'`
+  - `'dpa'`
+  - `'terms_and_conditions'`
+  - `'marketing_communications'`
+  - `'age_verification'`
+  - `'other'`
+</ParamField>
+
+<ParamField path="subjectId" type="string">
+  Internal subject ID for the user.
+</ParamField>
+
+<ParamField path="externalSubjectId" type="string">
+  External subject ID for the user (e.g., from your authentication system).
+</ParamField>
+
+<ParamField path="identityProvider" type="string">
+  The identity provider used (e.g., 'auth0', 'cognito').
+</ParamField>
+
+<ParamField path="preferences" type="Record<string, boolean>" required={"for cookie_banner type"}>
+  Consent preferences map. Required for cookie_banner type.
+  
+  **Example:** `{ "marketing": true, "analytics": false }`
+</ParamField>
+
+<ParamField path="policyId" type="string">
+  Policy ID for policy-based consent types.
+</ParamField>
+
+<ParamField path="metadata" type="Record<string, unknown>">
+  Additional metadata to store with the consent record.
+</ParamField>
+
+#### Response
+
+```typescript
+{
+  id: string;                          // Consent ID
+  subjectId?: string;                  // Subject ID
+  externalSubjectId?: string;          // External subject ID
+  domainId: string;                    // Domain ID
+  domain: string;                      // Domain name
+  type: PolicyType;                    // Consent type
+  status: string;                      // Consent status
+  recordId: string;                    // Consent record ID
+  metadata?: Record<string, unknown>;  // Additional metadata
+  givenAt: Date;                       // Timestamp when consent was given
+}
+```
+
+#### Example
+
+```typescript
+// Cookie banner consent
+const response = await client.consent.post({
+  domain: 'example.com',
+  type: 'cookie_banner',
+  externalSubjectId: 'user-123',
+  preferences: {
+    necessary: true,
+    marketing: true,
+    analytics: false,
+    functionality: true,
+  },
+  metadata: {
+    userAgent: 'Mozilla/5.0...',
+    ipAddress: '192.168.1.1',
+  },
+});
+
+console.log('Consent recorded:', response.id);
+```
+
+#### Error Codes
+
+- **`INPUT_VALIDATION_FAILED`** (422) - Invalid input parameters
+- **`SUBJECT_CREATION_FAILED`** (400) - Failed to create or find subject
+- **`DOMAIN_CREATION_FAILED`** (500) - Failed to create or find domain
+- **`POLICY_NOT_FOUND`** (404) - Policy not found
+- **`POLICY_INACTIVE`** (409) - Policy is not active
+- **`POLICY_CREATION_FAILED`** (500) - Failed to create or find policy
+- **`PURPOSE_CREATION_FAILED`** (500) - Failed to create consent purpose
+- **`CONSENT_CREATION_FAILED`** (500) - Failed to create consent record
+
+---
+
+### `client.consent.verify()`
+
+Verifies if a user has given valid consent for a specific policy and domain.
+
+#### Parameters
+
+<ParamField path="domain" type="string" required>
+  The domain to verify consent for.
+</ParamField>
+
+<ParamField path="type" type="PolicyType" required>
+  The type of consent to verify.
+</ParamField>
+
+<ParamField path="subjectId" type="string">
+  Internal subject ID.
+</ParamField>
+
+<ParamField path="externalSubjectId" type="string">
+  External subject ID.
+</ParamField>
+
+<ParamField path="policyId" type="string">
+  Specific policy ID to verify against.
+</ParamField>
+
+<ParamField path="preferences" type="string[]">
+  Array of consent purposes to verify (e.g., ['marketing', 'analytics']).
+</ParamField>
+
+#### Response
+
+```typescript
+{
+  isValid: boolean;              // Whether the consent is valid
+  reasons?: string[];            // Reasons if consent is invalid
+  consent?: {                    // Consent details if valid
+    id: string;                  // Consent ID
+    purposeIds: string[];        // Consented purpose IDs
+  };
+}
+```
+
+#### Example
+
+```typescript
+const verification = await client.consent.verify({
+  domain: 'example.com',
+  type: 'cookie_banner',
+  externalSubjectId: 'user-123',
+  preferences: ['marketing', 'analytics'],
+});
+
+if (verification.isValid) {
+  console.log('User has valid consent');
+  // Enable tracking/analytics
+} else {
+  console.log('Consent not valid:', verification.reasons);
+  // Show consent banner
+}
+```
+
+#### Error Codes
+
+- **`INPUT_VALIDATION_FAILED`** (422) - Invalid input parameters
+- **`SUBJECT_NOT_FOUND`** (404) - Subject not found
+- **`DOMAIN_NOT_FOUND`** (404) - Domain not found
+- **`POLICY_NOT_FOUND`** (404) - Policy not found or invalid
+- **`PURPOSES_NOT_FOUND`** (404) - Could not find all specified purposes
+- **`COOKIE_BANNER_PREFERENCES_REQUIRED`** (400) - Preferences required for cookie banner
+- **`NO_CONSENT_FOUND`** (404) - No consent found for the given policy
+
+---
+
+### `client.consent.showBanner()`
+
+Determines if a user should see a consent banner based on their location and applicable privacy regulations.
+
+#### Parameters
+
+This method uses headers automatically from the request context (when used server-side). No parameters are required.
+
+#### Response
+
+```typescript
+{
+  showConsentBanner: boolean;    // Whether to show the banner
+  jurisdiction: {                // Detected jurisdiction info
+    code: string;                // Jurisdiction code (e.g., 'GDPR')
+    name: string;                // Jurisdiction name
+    requiresConsent: boolean;    // Whether consent is required
+  };
+  location: {                    // User's detected location
+    countryCode: string | null;  // ISO country code
+    regionCode: string | null;   // Region/state code
+  };
+  translations: {                // Localized translations
+    language: string;            // Language code
+    translations: object;        // Translation strings
+  };
+  branding: 'c15t' | 'consent' | 'none';  // Branding preference
+}
+```
+
+#### Example
+
+```typescript
+const bannerInfo = await client.consent.showBanner();
+
+if (bannerInfo.showConsentBanner) {
+  console.log('Show banner for jurisdiction:', bannerInfo.jurisdiction.code);
+  console.log('User location:', bannerInfo.location.countryCode);
+  
+  // Use translations from bannerInfo.translations
+  // Render consent banner
+}
+```
+
+---
+
+### `client.consent.identify()`
+
+Links a subject's external ID to an existing consent record by consent ID.
+
+#### Parameters
+
+<ParamField path="consentId" type="string" required>
+  The consent record ID to update.
+</ParamField>
+
+<ParamField path="externalId" type="string" required>
+  The external user ID to link.
+</ParamField>
+
+<ParamField path="identityProvider" type="string">
+  The identity provider (e.g., 'auth0', 'cognito').
+</ParamField>
+
+#### Response
+
+```typescript
+{
+  success: boolean;  // Whether the identification was successful
+}
+```
+
+#### Example
+
+```typescript
+// After user logs in, link their consent to their authenticated ID
+const result = await client.consent.identify({
+  consentId: 'consent-abc-123',
+  externalId: 'auth0|user-123',
+  identityProvider: 'auth0',
+});
+
+if (result.success) {
+  console.log('User identified successfully');
+}
+```
+
+#### Error Codes
+
+- **`CONSENT_NOT_FOUND`** (404) - Consent not found
+- **`IDENTIFICATION_FAILED`** (500) - Failed to identify user
+
+---
+
+## Meta Methods
+
+### `client.meta.status()`
+
+Returns the current operational status and health metrics of the service.
+
+#### Parameters
+
+None.
+
+#### Response
+
+```typescript
+{
+  status: 'ok' | 'error';        // Overall service status
+  version: string;               // API version
+  timestamp: Date;               // Server timestamp
+  storage: {                     // Storage system info
+    type: string;                // Storage type
+    available: boolean;          // Whether storage is available
+  };
+  client: {                      // Client information
+    ip: string | null;           // Client IP address
+    userAgent: string | null;    // Client user agent
+    region: {                    // Client region
+      countryCode: string | null;
+      regionCode: string | null;
+    };
+  };
+}
+```
+
+#### Example
+
+```typescript
+const status = await client.meta.status();
+
+console.log('API Status:', status.status);
+console.log('API Version:', status.version);
+console.log('Storage Available:', status.storage.available);
+
+if (status.status === 'error') {
+  console.error('Service is experiencing issues');
+}
+```
+
+---
+
+## Type Definitions
+
+For detailed type definitions, see the [Types Reference](/api/node-sdk/types).
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Client Setup" icon="plug" href="/api/node-sdk/client">
+    Learn how to initialize the client
+  </Card>
+  <Card title="Type Definitions" icon="brackets-curly" href="/api/node-sdk/types">
+    View all TypeScript types
+  </Card>
+</CardGroup>

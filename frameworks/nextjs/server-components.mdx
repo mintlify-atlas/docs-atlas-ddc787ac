@@ -1,0 +1,471 @@
+---
+title: "Server Components"
+description: "Using c15t with React Server Components in Next.js"
+---
+
+## Overview
+
+The c15t Next.js integration is designed to work seamlessly with React Server Components (RSC) in the App Router.
+
+## Server-Side Consent Fetching
+
+The `ConsentManagerProvider` for App Router is a Server Component that fetches consent data during server-side rendering:
+
+```tsx app/layout.tsx
+import { ConsentManagerProvider, CookieBanner } from '@c15t/nextjs'
+
+export default function RootLayout({ children }) {
+  return (
+    <html>
+      <body>
+        {/* This is a Server Component */}
+        <ConsentManagerProvider
+          options={{
+            mode: 'c15t',
+            backendURL: process.env.NEXT_PUBLIC_C15T_BACKEND_URL,
+          }}
+        >
+          {children}
+          {/* CookieBanner is a Client Component */}
+          <CookieBanner />
+        </ConsentManagerProvider>
+      </body>
+    </html>
+  )
+}
+```
+
+## How Server Components Work
+
+The provider uses `next/headers` to access request information:
+
+```tsx /home/daytona/workspace/source/packages/nextjs/src/components/consent-manager-provider/index.tsx
+import { headers } from 'next/headers';
+
+export function ConsentManagerProvider({
+  children,
+  options,
+}: AppDirectoryConsentManagerProviderProps) {
+  let initialDataPromise: InitialDataPromise;
+
+  switch (options.mode) {
+    case 'c15t': {
+      if (!options.backendURL) {
+        throw new Error('backendURL is required for c15t mode');
+      }
+
+      // Fetch data server-side using request headers
+      initialDataPromise = getC15TInitialData(
+        options.backendURL,
+        headers(),
+        options.overrides
+      );
+      break;
+    }
+    default:
+      initialDataPromise = undefined;
+  }
+
+  return (
+    <ClientConsentManagerProvider
+      options={enrichOptions({
+        options,
+        initialData: initialDataPromise,
+        usingAppDir: true,
+      })}
+    >
+      {children}
+    </ClientConsentManagerProvider>
+  );
+}
+```
+
+## Data Fetching Implementation
+
+The server-side fetch extracts relevant headers:
+
+```tsx /home/daytona/workspace/source/packages/nextjs/src/components/consent-manager-provider/utils/initial-data.ts
+export async function getC15TInitialData(
+  backendURL: string,
+  initialHeaders: Headers | Promise<Headers>,
+  overrides?: Overrides
+): Promise<ShowConsentBanner> {
+  const headers = await initialHeaders;
+  const relevantHeaders = extractRelevantHeaders(headers);
+
+  // Can't fetch if headers are not present (force-static mode)
+  if (Object.keys(relevantHeaders).length === 0) {
+    return undefined;
+  }
+
+  const normalizedURL = normalizeBackendURL(backendURL, headers);
+
+  if (!normalizedURL) {
+    return undefined;
+  }
+
+  // Apply overrides to headers
+  if (overrides?.country) {
+    relevantHeaders['x-c15t-country'] = overrides.country;
+  }
+  if (overrides?.region) {
+    relevantHeaders['x-c15t-region'] = overrides.region;
+  }
+  if (overrides?.language) {
+    relevantHeaders['accept-language'] = overrides.language;
+  }
+
+  try {
+    const response = await fetch(`${normalizedURL}/show-consent-banner`, {
+      method: 'GET',
+      headers: relevantHeaders,
+    });
+
+    if (response.ok) {
+      return await response.json();
+    }
+  } catch {
+    // Silently handle errors
+  }
+
+  return undefined;
+}
+```
+
+## Client Components
+
+All UI components are Client Components marked with `'use client'`:
+
+### CookieBanner
+
+```tsx
+import { CookieBanner } from '@c15t/nextjs'
+
+export default function Layout({ children }) {
+  return (
+    <ConsentManagerProvider options={{ mode: 'c15t', backendURL: '...' }}>
+      {children}
+      {/* This is a Client Component */}
+      <CookieBanner />
+    </ConsentManagerProvider>
+  )
+}
+```
+
+### Using Hooks in Client Components
+
+Hooks must be used in Client Components:
+
+```tsx app/components/analytics-tracker.tsx
+'use client'
+
+import { useConsentManager } from '@c15t/nextjs'
+import { useEffect } from 'react'
+
+export function AnalyticsTracker() {
+  const { consent } = useConsentManager()
+
+  useEffect(() => {
+    if (consent?.analytics) {
+      // Initialize analytics
+      window.gtag('config', 'GA_MEASUREMENT_ID')
+    }
+  }, [consent?.analytics])
+
+  return null
+}
+```
+
+Then use it in your layout:
+
+```tsx app/layout.tsx
+import { ConsentManagerProvider } from '@c15t/nextjs'
+import { AnalyticsTracker } from './components/analytics-tracker'
+
+export default function RootLayout({ children }) {
+  return (
+    <html>
+      <body>
+        <ConsentManagerProvider options={{ mode: 'c15t', backendURL: '...' }}>
+          {children}
+          <AnalyticsTracker />
+        </ConsentManagerProvider>
+      </body>
+    </html>
+  )
+}
+```
+
+## Non-Serializable Props
+
+Server Components cannot pass non-serializable props (like functions) to Client Components. Use `ClientSideOptionsProvider` for callbacks and scripts:
+
+```tsx app/layout.tsx
+import { ConsentManagerProvider } from '@c15t/nextjs'
+import { ClientSideOptionsProvider } from '@c15t/nextjs/client'
+
+export default function RootLayout({ children }) {
+  return (
+    <html>
+      <body>
+        <ConsentManagerProvider
+          options={{
+            mode: 'c15t',
+            backendURL: process.env.NEXT_PUBLIC_C15T_BACKEND_URL,
+          }}
+        >
+          <ClientSideOptionsProvider
+            callbacks={{
+              onConsentChange: (consent) => {
+                console.log('Consent changed:', consent)
+              },
+              onBannerDismiss: () => {
+                console.log('Banner dismissed')
+              },
+            }}
+            scripts={[
+              {
+                id: 'analytics',
+                src: '/analytics.js',
+                category: 'analytics',
+              },
+            ]}
+          >
+            {children}
+          </ClientSideOptionsProvider>
+        </ConsentManagerProvider>
+      </body>
+    </html>
+  )
+}
+```
+
+### ClientSideOptionsProvider Implementation
+
+The provider is a Client Component that sets options once on mount:
+
+```tsx /home/daytona/workspace/source/packages/nextjs/src/components/client-options/index.tsx
+'use client';
+
+export function ClientSideOptionsProvider({
+  children,
+  callbacks,
+  scripts,
+}: ClientSideOptionsProviderProps) {
+  const { setCallback, setScripts } = useConsentManager();
+
+  // Capture initial values for one-time initialization
+  const callbacksRef = useRef(callbacks);
+  const scriptsRef = useRef(scripts);
+  const initializedRef = useRef({ callbacks: false, scripts: false });
+
+  // Set callbacks only once on mount
+  useEffect(() => {
+    if (initializedRef.current.callbacks || !callbacksRef.current) {
+      return;
+    }
+
+    for (const [key, value] of Object.entries(callbacksRef.current)) {
+      const callbackKey = key as keyof typeof callbacksRef.current;
+      setCallback(callbackKey, value);
+    }
+
+    initializedRef.current.callbacks = true;
+  }, [setCallback]);
+
+  // Set scripts only once on mount
+  useEffect(() => {
+    if (initializedRef.current.scripts || !scriptsRef.current) {
+      return;
+    }
+
+    setScripts(scriptsRef.current);
+    initializedRef.current.scripts = true;
+  }, [setScripts]);
+
+  return children;
+}
+```
+
+<Note>
+  The `ClientSideOptionsProvider` performs one-time initialization on mount. Callbacks and scripts are captured once and do not update on prop changes.
+</Note>
+
+## Type Safety
+
+The App Router provider excludes non-serializable props:
+
+```tsx /home/daytona/workspace/source/packages/nextjs/src/types.ts
+export type AppDirectoryConsentManagerProviderProps = Omit<
+  ReactConsentManagerProviderProps,
+  'options'
+> & {
+  options: Omit<
+    ReactConsentManagerProviderProps['options'],
+    'callbacks' | 'scripts'
+  >;
+};
+```
+
+This ensures TypeScript prevents you from passing callbacks or scripts to the Server Component.
+
+## Static vs Dynamic Rendering
+
+### Dynamic Rendering (Default)
+
+When using `headers()`, the page renders dynamically:
+
+```tsx app/page.tsx
+import { ConsentManagerProvider } from '@c15t/nextjs'
+
+// This page will be dynamically rendered
+export default function Page() {
+  return (
+    <ConsentManagerProvider options={{ mode: 'c15t', backendURL: '...' }}>
+      <div>Content</div>
+    </ConsentManagerProvider>
+  )
+}
+```
+
+### Static Generation
+
+If headers are unavailable (e.g., `force-static`), the fetch is skipped:
+
+```tsx /home/daytona/workspace/source/packages/nextjs/src/components/consent-manager-provider/utils/initial-data.ts
+const relevantHeaders = extractRelevantHeaders(headers);
+
+// Can't fetch from the server if headers are not present
+if (Object.keys(relevantHeaders).length === 0) {
+  return undefined;
+}
+```
+
+## Composition Patterns
+
+### Nested Layouts
+
+The provider should be in the root layout:
+
+```tsx app/layout.tsx
+import { ConsentManagerProvider } from '@c15t/nextjs'
+
+export default function RootLayout({ children }) {
+  return (
+    <html>
+      <body>
+        <ConsentManagerProvider options={{ mode: 'c15t', backendURL: '...' }}>
+          {children}
+        </ConsentManagerProvider>
+      </body>
+    </html>
+  )
+}
+```
+
+```tsx app/(marketing)/layout.tsx
+import { CookieBanner } from '@c15t/nextjs'
+
+export default function MarketingLayout({ children }) {
+  return (
+    <div>
+      {children}
+      {/* Access consent context from parent */}
+      <CookieBanner />
+    </div>
+  )
+}
+```
+
+### Conditional Components
+
+Render components based on consent in Client Components:
+
+```tsx app/components/conditional-widget.tsx
+'use client'
+
+import { useConsentManager } from '@c15t/nextjs'
+import { ConsentManagerWidget } from '@c15t/nextjs'
+
+export function ConditionalWidget() {
+  const { consent } = useConsentManager()
+
+  // Only show if analytics consent is granted
+  if (!consent?.analytics) {
+    return null
+  }
+
+  return <ConsentManagerWidget />
+}
+```
+
+## Performance Considerations
+
+### Streaming
+
+The consent data is fetched as a promise that can be streamed:
+
+```tsx /home/daytona/workspace/source/packages/nextjs/src/components/consent-manager-provider/index.tsx
+initialDataPromise = getC15TInitialData(
+  options.backendURL,
+  headers(),
+  options.overrides
+);
+```
+
+React 18's `use()` primitive handles the promise resolution.
+
+### Caching
+
+Next.js automatically caches fetch requests. The consent fetch respects Next.js caching:
+
+```tsx
+const response = await fetch(`${normalizedURL}/show-consent-banner`, {
+  method: 'GET',
+  headers: relevantHeaders,
+});
+```
+
+You can customize caching with Next.js fetch options if needed.
+
+## Client-Only Mode
+
+For a fully client-side solution without server-side fetching, use the `/client` export:
+
+```tsx app/layout.tsx
+import { ConsentManagerProvider } from '@c15t/nextjs/client'
+
+export default function RootLayout({ children }) {
+  return (
+    <html>
+      <body>
+        {/* This is a Client Component */}
+        <ConsentManagerProvider
+          options={{
+            mode: 'c15t',
+            backendURL: process.env.NEXT_PUBLIC_C15T_BACKEND_URL,
+            callbacks: {
+              onConsentChange: (consent) => console.log(consent),
+            },
+          }}
+        >
+          {children}
+        </ConsentManagerProvider>
+      </body>
+    </html>
+  )
+}
+```
+
+This uses the standard React provider without server-side optimizations.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="App Router" icon="route" href="/frameworks/nextjs/app-router">
+    Learn more about App Router patterns
+  </Card>
+  <Card title="Hooks" icon="hook">
+    Explore available hooks
+  </Card>
+</CardGroup>

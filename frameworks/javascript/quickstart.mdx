@@ -1,0 +1,304 @@
+---
+title: 'JavaScript Quickstart'
+description: 'Get started with c15t consent management in vanilla JavaScript applications'
+---
+
+# JavaScript Quickstart
+
+Get started with c15t consent management in your JavaScript or TypeScript application. This guide covers both automated and manual installation.
+
+## Prerequisites
+
+- Node.js 18.17.0 or later
+- npm, pnpm, bun, or yarn package manager
+- A hosted [c15t instance](https://consent.io) (free sign-up) or [self-hosted deployment](https://c15t.com/docs/self-host/v2)
+
+## Automated Setup
+
+The fastest way to get started is using the c15t CLI:
+
+<CodeGroup>
+```bash npm
+npx @c15t/cli generate
+```
+
+```bash pnpm
+pnpm dlx @c15t/cli generate
+```
+
+```bash bun
+bunx --bun @c15t/cli generate
+```
+
+```bash yarn
+yarn dlx @c15t/cli generate
+```
+</CodeGroup>
+
+The CLI will:
+- Install necessary packages
+- Configure your c15t instance
+- Set up environment variables
+- Add consent management components to your app
+
+## Manual Installation
+
+<Steps>
+  <Step title="Install the package">
+    <CodeGroup>
+    ```bash npm
+    npm install c15t
+    ```
+
+    ```bash pnpm
+    pnpm add c15t
+    ```
+
+    ```bash bun
+    bun add c15t
+    ```
+
+    ```bash yarn
+    yarn add c15t
+    ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Configure the consent manager">
+    Create a consent manager instance using `configureConsentManager`:
+
+    ```typescript
+    import { configureConsentManager, createConsentManagerStore } from 'c15t';
+
+    // Create the client
+    const consentManager = configureConsentManager({
+      backendURL: '/api/c15t', // Your c15t API endpoint
+    });
+
+    // Create the store
+    const store = createConsentManagerStore(consentManager, {
+      // Optional: Configure GDPR consent types
+      initialGdprTypes: ['necessary', 'functionality', 'measurement', 'marketing'],
+      
+      // Optional: Configure scripts to load based on consent
+      scripts: [
+        {
+          id: 'google-analytics',
+          src: 'https://www.googletagmanager.com/gtag/js?id=GA-XXXXX',
+          category: 'measurement',
+        },
+      ],
+    });
+    ```
+  </Step>
+
+  <Step title="Fetch consent banner information">
+    Check if the consent banner should be displayed:
+
+    ```typescript
+    // Fetch consent banner info on page load
+    await store.getState().fetchConsentBannerInfo();
+
+    // Check if banner should be shown
+    if (store.getState().showPopup) {
+      // Display your consent banner UI
+      console.log('Show consent banner');
+    }
+    ```
+  </Step>
+
+  <Step title="Handle consent submission">
+    Save user consent preferences:
+
+    ```typescript
+    // Accept all consents
+    await store.getState().saveConsents('all');
+
+    // Deny all optional consents
+    await store.getState().saveConsents('necessary_only');
+
+    // Save custom consent preferences
+    store.getState().setConsent('measurement', true);
+    store.getState().setConsent('marketing', false);
+    await store.getState().saveConsents('custom');
+    ```
+  </Step>
+
+  <Step title="Check consent status">
+    Check if user has consented to specific categories:
+
+    ```typescript
+    // Check single consent
+    const hasAnalytics = store.getState().has('measurement');
+
+    // Check complex conditions
+    const hasAnalyticsAndMarketing = store.getState().has({ 
+      and: ['measurement', 'marketing'] 
+    });
+
+    const hasEither = store.getState().has({ 
+      or: ['measurement', 'marketing'] 
+    });
+
+    // Subscribe to consent changes
+    store.subscribe((state) => {
+      console.log('Consent state updated:', state.consents);
+    });
+    ```
+  </Step>
+</Steps>
+
+## Configuration Options
+
+### Client Modes
+
+c15t supports three client modes:
+
+#### c15t Mode (Default)
+
+Connects to a c15t backend API:
+
+```typescript
+const manager = configureConsentManager({
+  mode: 'c15t', // Optional, this is the default
+  backendURL: '/api/c15t',
+  headers: {
+    'X-Custom-Header': 'value',
+  },
+  retryConfig: {
+    maxRetries: 3,
+    retryDelay: 1000,
+  },
+});
+```
+
+<ParamField path="backendURL" type="string" required>
+  The URL of your c15t API endpoint
+</ParamField>
+
+<ParamField path="headers" type="Record<string, string>">
+  Additional HTTP headers to include in requests
+</ParamField>
+
+<ParamField path="customFetch" type="typeof fetch">
+  Custom fetch implementation for advanced use cases
+</ParamField>
+
+<ParamField path="retryConfig" type="RetryConfig">
+  Configuration for automatic retry behavior
+</ParamField>
+
+#### Offline Mode
+
+Disables all API requests for testing or development:
+
+```typescript
+const manager = configureConsentManager({
+  mode: 'offline',
+});
+```
+
+#### Custom Mode
+
+Provide your own endpoint handlers:
+
+```typescript
+const manager = configureConsentManager({
+  mode: 'custom',
+  endpointHandlers: {
+    showConsentBanner: async () => ({
+      data: { showConsentBanner: true },
+      ok: true,
+      error: null,
+      response: null,
+    }),
+    setConsent: async (options) => ({
+      data: { success: true },
+      ok: true,
+      error: null,
+      response: null,
+    }),
+    verifyConsent: async (options) => ({
+      data: { valid: true },
+      ok: true,
+      error: null,
+      response: null,
+    }),
+  },
+});
+```
+
+### Store Options
+
+Configure the consent manager store:
+
+<ParamField path="initialGdprTypes" type="AllConsentNames[]">
+  Initial consent types to activate (e.g., `['necessary', 'measurement', 'marketing']`)
+</ParamField>
+
+<ParamField path="scripts" type="Script[]">
+  Scripts to load dynamically based on consent state. See [Script Loader](/frameworks/javascript/script-loader)
+</ParamField>
+
+<ParamField path="callbacks" type="Callbacks">
+  Callback functions for consent lifecycle events. See [Callbacks](/frameworks/javascript/callbacks)
+</ParamField>
+
+<ParamField path="storageConfig" type="StorageConfig">
+  Configure how consent data is stored:
+  - `storageKey`: Custom key for localStorage/cookie (default: `'c15t_consent'`)
+  - `crossSubdomain`: Enable cross-subdomain cookie support (default: `false`)
+  - `defaultExpiryDays`: Cookie expiration in days (default: `365`)
+</ParamField>
+
+<ParamField path="translationConfig" type="TranslationConfig">
+  Configure translations for the consent UI. See [Internationalization](/frameworks/javascript/internationalization)
+</ParamField>
+
+<ParamField path="enabled" type="boolean" default="true">
+  Globally enable or disable the consent manager. When `false`, all consents are treated as granted.
+</ParamField>
+
+## API Reference
+
+### configureConsentManager
+
+Creates a consent manager client instance.
+
+```typescript
+function configureConsentManager(
+  options: ConsentManagerOptions
+): ConsentManagerInterface
+```
+
+See `src/client/client-factory.ts:270`
+
+### createConsentManagerStore
+
+Creates a Zustand store for consent state management.
+
+```typescript
+function createConsentManagerStore(
+  manager: ConsentManagerInterface,
+  options?: StoreOptions
+): Store<PrivacyConsentState>
+```
+
+See `src/store.ts:317`
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Script Loader" icon="code" href="/frameworks/javascript/script-loader">
+    Automatically load tracking scripts based on user consent
+  </Card>
+  <Card title="Callbacks" icon="bell" href="/frameworks/javascript/callbacks">
+    React to consent lifecycle events
+  </Card>
+  <Card title="Internationalization" icon="language" href="/frameworks/javascript/internationalization">
+    Add multi-language support to your consent UI
+  </Card>
+  <Card title="Iframe Blocking" icon="ban" href="/frameworks/javascript/iframe-blocking">
+    Block third-party iframes until consent is granted
+  </Card>
+</CardGroup>

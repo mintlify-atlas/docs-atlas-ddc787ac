@@ -1,0 +1,532 @@
+---
+title: Database Adapters
+description: Configure database adapters for PostgreSQL, MySQL, SQLite, MongoDB, and more
+---
+
+# Database Adapters
+
+c15t v2 uses [FumaDB](https://fumadb.com) adapters to support multiple database engines. Choose the adapter that best fits your infrastructure.
+
+## Supported Databases
+
+- **Kysely**: PostgreSQL, MySQL, SQLite, MSSQL
+- **Drizzle ORM**: PostgreSQL, MySQL, SQLite
+- **Prisma**: PostgreSQL, MySQL, SQLite, MongoDB, CockroachDB
+- **TypeORM**: PostgreSQL, MySQL, SQLite, MSSQL, Oracle
+- **MongoDB**: Native MongoDB support
+
+## Kysely Adapter
+
+[Kysely](https://kysely.dev) is a type-safe SQL query builder for TypeScript.
+
+### Installation
+
+<CodeGroup>
+```bash PostgreSQL
+npm install kysely pg
+```
+
+```bash MySQL
+npm install kysely mysql2
+```
+
+```bash SQLite
+npm install kysely better-sqlite3
+```
+</CodeGroup>
+
+### PostgreSQL Configuration
+
+```typescript
+import { c15tInstance } from '@c15t/backend/v2';
+import { kyselyAdapter } from '@c15t/backend/v2/db/adapters/kysely';
+import { Kysely, PostgresDialect } from 'kysely';
+import { Pool } from 'pg';
+
+const db = new Kysely({
+  dialect: new PostgresDialect({
+    pool: new Pool({
+      host: 'localhost',
+      port: 5432,
+      database: 'consent_db',
+      user: 'postgres',
+      password: 'password',
+      max: 10, // Connection pool size
+    }),
+  }),
+});
+
+const c15t = c15tInstance({
+  adapter: kyselyAdapter(db),
+  trustedOrigins: ['https://yourdomain.com'],
+});
+```
+
+### MySQL Configuration
+
+```typescript
+import { Kysely, MysqlDialect } from 'kysely';
+import { createPool } from 'mysql2';
+
+const db = new Kysely({
+  dialect: new MysqlDialect({
+    pool: createPool({
+      host: 'localhost',
+      port: 3306,
+      database: 'consent_db',
+      user: 'root',
+      password: 'password',
+    }),
+  }),
+});
+
+const c15t = c15tInstance({
+  adapter: kyselyAdapter(db),
+  trustedOrigins: ['https://yourdomain.com'],
+});
+```
+
+### SQLite Configuration
+
+```typescript
+import { Kysely, SqliteDialect } from 'kysely';
+import Database from 'better-sqlite3';
+
+const db = new Kysely({
+  dialect: new SqliteDialect({
+    database: new Database('consent.db'),
+  }),
+});
+
+const c15t = c15tInstance({
+  adapter: kyselyAdapter(db),
+  trustedOrigins: ['https://yourdomain.com'],
+});
+```
+
+### MSSQL Configuration
+
+```typescript
+import { Kysely, MssqlDialect } from 'kysely';
+import { Pool } from 'tarn';
+import * as tedious from 'tedious';
+
+const db = new Kysely({
+  dialect: new MssqlDialect({
+    tarn: {
+      ...Pool.defaultConfig,
+    },
+    tedious: {
+      connectionFactory: () => new tedious.Connection({
+        server: 'localhost',
+        authentication: {
+          type: 'default',
+          options: {
+            userName: 'sa',
+            password: 'password',
+          },
+        },
+        options: {
+          database: 'consent_db',
+          port: 1433,
+        },
+      }),
+    },
+  }),
+});
+
+const c15t = c15tInstance({
+  adapter: kyselyAdapter(db),
+  trustedOrigins: ['https://yourdomain.com'],
+});
+```
+
+## Drizzle ORM Adapter
+
+[Drizzle ORM](https://orm.drizzle.team) is a lightweight TypeScript ORM.
+
+### Installation
+
+<CodeGroup>
+```bash PostgreSQL
+npm install drizzle-orm pg
+```
+
+```bash MySQL
+npm install drizzle-orm mysql2
+```
+
+```bash SQLite
+npm install drizzle-orm better-sqlite3
+```
+</CodeGroup>
+
+### PostgreSQL Configuration
+
+```typescript
+import { c15tInstance } from '@c15t/backend/v2';
+import { drizzleAdapter } from '@c15t/backend/v2/db/adapters/drizzle';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { Pool } from 'pg';
+
+const pool = new Pool({
+  host: 'localhost',
+  port: 5432,
+  database: 'consent_db',
+  user: 'postgres',
+  password: 'password',
+});
+
+const db = drizzle(pool);
+
+const c15t = c15tInstance({
+  adapter: drizzleAdapter(db),
+  trustedOrigins: ['https://yourdomain.com'],
+});
+```
+
+### MySQL Configuration
+
+```typescript
+import { drizzle } from 'drizzle-orm/mysql2';
+import mysql from 'mysql2/promise';
+
+const connection = await mysql.createConnection({
+  host: 'localhost',
+  user: 'root',
+  database: 'consent_db',
+  password: 'password',
+});
+
+const db = drizzle(connection);
+
+const c15t = c15tInstance({
+  adapter: drizzleAdapter(db),
+  trustedOrigins: ['https://yourdomain.com'],
+});
+```
+
+### SQLite Configuration
+
+```typescript
+import { drizzle } from 'drizzle-orm/better-sqlite3';
+import Database from 'better-sqlite3';
+
+const sqlite = new Database('consent.db');
+const db = drizzle(sqlite);
+
+const c15t = c15tInstance({
+  adapter: drizzleAdapter(db),
+  trustedOrigins: ['https://yourdomain.com'],
+});
+```
+
+## Prisma Adapter
+
+[Prisma](https://www.prisma.io) is a next-generation ORM for Node.js and TypeScript.
+
+### Installation
+
+```bash
+npm install prisma @prisma/client
+npx prisma init
+```
+
+### Configuration
+
+1. Define your schema in `prisma/schema.prisma`:
+
+```prisma prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql" // or "mysql", "sqlite", "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+// c15t will auto-generate the schema
+```
+
+2. Generate the Prisma client:
+
+```bash
+npx prisma generate
+```
+
+3. Configure c15t:
+
+```typescript
+import { c15tInstance } from '@c15t/backend/v2';
+import { prismaAdapter } from '@c15t/backend/v2/db/adapters/prisma';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+const c15t = c15tInstance({
+  adapter: prismaAdapter(prisma),
+  trustedOrigins: ['https://yourdomain.com'],
+});
+```
+
+### MongoDB with Prisma
+
+```prisma prisma/schema.prisma
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+```
+
+```typescript
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: 'mongodb://localhost:27017/consent_db',
+    },
+  },
+});
+
+const c15t = c15tInstance({
+  adapter: prismaAdapter(prisma),
+  trustedOrigins: ['https://yourdomain.com'],
+});
+```
+
+## TypeORM Adapter
+
+[TypeORM](https://typeorm.io) is a feature-rich ORM for TypeScript and JavaScript.
+
+### Installation
+
+<CodeGroup>
+```bash PostgreSQL
+npm install typeorm pg reflect-metadata
+```
+
+```bash MySQL
+npm install typeorm mysql2 reflect-metadata
+```
+
+```bash SQLite
+npm install typeorm better-sqlite3 reflect-metadata
+```
+</CodeGroup>
+
+### Configuration
+
+```typescript
+import 'reflect-metadata';
+import { c15tInstance } from '@c15t/backend/v2';
+import { typeormAdapter } from '@c15t/backend/v2/db/adapters/typeorm';
+import { DataSource } from 'typeorm';
+
+const dataSource = new DataSource({
+  type: 'postgres',
+  host: 'localhost',
+  port: 5432,
+  username: 'postgres',
+  password: 'password',
+  database: 'consent_db',
+  synchronize: false, // Use migrations in production
+  logging: false,
+});
+
+await dataSource.initialize();
+
+const c15t = c15tInstance({
+  adapter: typeormAdapter(dataSource),
+  trustedOrigins: ['https://yourdomain.com'],
+});
+```
+
+## MongoDB Adapter
+
+Native MongoDB support without an ORM.
+
+### Installation
+
+```bash
+npm install mongodb
+```
+
+### Configuration
+
+```typescript
+import { c15tInstance } from '@c15t/backend/v2';
+import { mongoAdapter } from '@c15t/backend/v2/db/adapters/mongo';
+import { MongoClient } from 'mongodb';
+
+const client = new MongoClient('mongodb://localhost:27017');
+await client.connect();
+
+const db = client.db('consent_db');
+
+const c15t = c15tInstance({
+  adapter: mongoAdapter(db),
+  trustedOrigins: ['https://yourdomain.com'],
+});
+```
+
+## Database Schema
+
+The c15t backend requires the following tables:
+
+- **subjects**: User/visitor records
+- **domains**: Domain configurations
+- **consent_policies**: Consent policy versions
+- **consent_purposes**: Purpose definitions (analytics, marketing, etc.)
+- **consent_records**: Individual consent records
+- **consents**: Current consent states
+- **audit_logs**: Audit trail of all consent events
+
+### Running Migrations
+
+Run migrations to create the schema:
+
+```typescript migrate.ts
+import { createMigrator } from '@c15t/backend/v2/db/migrator';
+import config from './c15t.config';
+
+const migrator = createMigrator(config.adapter);
+
+// Run all pending migrations
+await migrator.up();
+
+console.log('Migrations completed');
+```
+
+Run the migration script:
+
+```bash
+bun migrate.ts
+```
+
+## Connection Pooling
+
+### PostgreSQL Connection Pool
+
+```typescript
+import { Pool } from 'pg';
+
+const pool = new Pool({
+  host: 'localhost',
+  port: 5432,
+  database: 'consent_db',
+  user: 'postgres',
+  password: 'password',
+  max: 20, // Maximum pool size
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+});
+```
+
+### MySQL Connection Pool
+
+```typescript
+import { createPool } from 'mysql2';
+
+const pool = createPool({
+  host: 'localhost',
+  port: 3306,
+  database: 'consent_db',
+  user: 'root',
+  password: 'password',
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
+});
+```
+
+## Environment Variables
+
+Use environment variables for database configuration:
+
+```bash .env
+DATABASE_URL=postgresql://user:password@localhost:5432/consent_db
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=consent_db
+DB_USER=postgres
+DB_PASSWORD=password
+DB_POOL_SIZE=10
+```
+
+Load them in your config:
+
+```typescript
+const db = new Kysely({
+  dialect: new PostgresDialect({
+    pool: new Pool({
+      connectionString: process.env.DATABASE_URL,
+      max: Number(process.env.DB_POOL_SIZE) || 10,
+    }),
+  }),
+});
+```
+
+## Performance Tips
+
+### Indexing
+
+Ensure proper indexes are created on:
+- `subjects.id`
+- `consents.subject_id`
+- `consent_records.subject_id`
+- `audit_logs.subject_id`
+- `audit_logs.created_at`
+
+### Connection Pooling
+
+Use appropriate pool sizes:
+- Development: 5-10 connections
+- Production: 20-50 connections (adjust based on load)
+
+### Query Optimization
+
+The adapters automatically:
+- Use prepared statements
+- Batch operations where possible
+- Implement efficient pagination
+
+## Troubleshooting
+
+### Connection Timeout
+
+```typescript
+// Increase connection timeout
+const pool = new Pool({
+  connectionTimeoutMillis: 5000, // 5 seconds
+});
+```
+
+### Too Many Connections
+
+```typescript
+// Reduce pool size
+const pool = new Pool({
+  max: 5, // Fewer connections
+});
+```
+
+### Migration Errors
+
+If migrations fail:
+1. Check database credentials
+2. Verify database exists
+3. Ensure user has CREATE TABLE permissions
+4. Check for existing tables with same names
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Configuration" icon="gear" href="/self-host/v2/configuration">
+    Configure your c15t instance
+  </Card>
+  <Card title="Deployment" icon="cloud" href="/self-host/v2/deployment">
+    Deploy to production
+  </Card>
+</CardGroup>

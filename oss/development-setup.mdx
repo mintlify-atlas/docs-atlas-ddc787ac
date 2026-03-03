@@ -1,0 +1,710 @@
+---
+title: Development Setup
+description: Complete guide to setting up your local development environment for c15t
+---
+
+This guide will walk you through setting up your local development environment to contribute to c15t.
+
+## Prerequisites
+
+### Required
+
+**Bun** (v1.3.6 or later)
+
+c15t uses Bun as its package manager and runtime. Install it using:
+
+```bash
+# macOS and Linux
+curl -fsSL https://bun.sh/install | bash
+
+# Windows (WSL required)
+curl -fsSL https://bun.sh/install | bash
+
+# Or with npm
+npm install -g bun
+```
+
+Verify installation:
+```bash
+bun --version
+# Should output: 1.3.6 or higher
+```
+
+**Node.js** (v18.17.0 or later)
+
+While Bun is the primary runtime, Node.js is still required for some tooling:
+
+```bash
+# Using nvm (recommended)
+nvm install 18
+nvm use 18
+
+# Or download from https://nodejs.org/
+```
+
+**Git**
+
+Version control is essential:
+
+```bash
+# macOS
+brew install git
+
+# Linux (Debian/Ubuntu)
+sudo apt-get install git
+
+# Windows
+# Download from https://git-scm.com/
+```
+
+### Recommended
+
+**Visual Studio Code**
+
+The project includes VS Code configuration in `.vscode/`:
+
+- Recommended extensions
+- Debugging configurations
+- Editor settings
+
+**GitHub CLI** (optional but helpful)
+
+```bash
+# macOS
+brew install gh
+
+# Linux
+sudo apt install gh
+
+# Windows
+winget install GitHub.cli
+```
+
+## Initial Setup
+
+### 1. Fork the Repository
+
+Visit [github.com/c15t/c15t](https://github.com/c15t/c15t) and click the "Fork" button.
+
+### 2. Clone Your Fork
+
+```bash
+# Using HTTPS
+git clone https://github.com/YOUR_USERNAME/c15t.git
+
+# Or using SSH (recommended)
+git clone git@github.com:YOUR_USERNAME/c15t.git
+
+# Or using GitHub CLI
+gh repo clone YOUR_USERNAME/c15t
+```
+
+### 3. Navigate to Project
+
+```bash
+cd c15t
+```
+
+### 4. Add Upstream Remote
+
+This allows you to sync with the main repository:
+
+```bash
+git remote add upstream https://github.com/c15t/c15t.git
+
+# Verify remotes
+git remote -v
+# Should show:
+# origin    https://github.com/YOUR_USERNAME/c15t.git (fetch)
+# origin    https://github.com/YOUR_USERNAME/c15t.git (push)
+# upstream  https://github.com/c15t/c15t.git (fetch)
+# upstream  https://github.com/c15t/c15t.git (push)
+```
+
+### 5. Install Dependencies
+
+```bash
+bun install
+```
+
+This will:
+- Install all package dependencies
+- Link workspace packages
+- Set up git hooks (via Lefthook)
+
+<Note>
+The first install might take a few minutes as Bun downloads and caches all dependencies.
+</Note>
+
+### 6. Build All Packages
+
+Build the entire monorepo:
+
+```bash
+bun run build
+```
+
+Or build just the library packages:
+
+```bash
+bun run build:libs
+```
+
+### 7. Run Tests
+
+Verify everything is working:
+
+```bash
+bun run test
+```
+
+All tests should pass. If you see failures, check the troubleshooting section below.
+
+## Project Structure
+
+Understanding the monorepo structure:
+
+```
+c15t/
+├── .changeset/           # Changeset configuration
+├── .github/              # GitHub Actions and templates
+├── .vscode/              # VS Code settings
+├── benchmarks/           # Performance benchmarks
+├── changelog/            # Generated changelogs
+├── docs/                 # Documentation source
+├── internals/            # Internal tooling
+│   ├── bundle-analysis-action/
+│   ├── typescript-config/
+│   └── vitest-config/
+├── packages/             # Published packages
+│   ├── backend/          # @c15t/backend
+│   ├── cli/              # @c15t/cli
+│   ├── core/             # c15t
+│   ├── dev-tools/        # @c15t/dev-tools
+│   ├── logger/           # @c15t/logger
+│   ├── nextjs/           # @c15t/nextjs
+│   ├── node-sdk/         # @c15t/node-sdk
+│   ├── react/            # @c15t/react
+│   ├── scripts/          # @c15t/scripts
+│   ├── shared/           # @c15t/shared
+│   └── translations/     # @c15t/translations
+├── scripts/              # Build and utility scripts
+├── biome.jsonc           # Biome configuration
+├── bun.lock              # Bun lockfile
+├── package.json          # Root package.json
+├── turbo.json            # Turbo configuration
+└── vitest.workspace.ts   # Vitest workspace config
+```
+
+## Development Commands
+
+### Building
+
+```bash
+# Build all packages
+bun run build
+
+# Build library packages only
+bun run build:libs
+
+# Build with watch mode (in package directory)
+cd packages/react
+bun run build --watch
+```
+
+### Testing
+
+```bash
+# Run all tests
+bun run test
+
+# Run tests in watch mode
+bun test --watch
+
+# Run tests with coverage
+bun test --coverage
+
+# Run tests for specific package
+cd packages/react
+bun test
+
+# Run tests with UI
+bun test --ui
+```
+
+### Code Quality
+
+```bash
+# Format code with Biome
+bun run fmt
+
+# Check formatting without changes
+bun run fmt --check
+
+# Lint code
+bun run lint
+
+# Fix linting issues automatically
+bun run lint:fix
+
+# Type check all packages
+bun run check-types
+
+# Check for unused dependencies
+bun run knip
+```
+
+### Development Mode
+
+```bash
+# Start all packages in dev mode
+bun run dev
+
+# Start specific package
+cd packages/react
+bun run dev
+```
+
+### Documentation
+
+```bash
+# Format documentation
+bun run fmt:docs
+
+# Lint documentation
+bun run lint:docs
+```
+
+## Working with Packages
+
+### Creating a New Package
+
+1. Create directory structure:
+   ```bash
+   mkdir -p packages/my-package/src
+   cd packages/my-package
+   ```
+
+2. Create `package.json`:
+   ```json
+   {
+     "name": "@c15t/my-package",
+     "version": "0.0.0",
+     "type": "module",
+     "main": "./dist/index.js",
+     "types": "./dist/index.d.ts",
+     "exports": {
+       ".": {
+         "types": "./dist/index.d.ts",
+         "default": "./dist/index.js"
+       }
+     },
+     "scripts": {
+       "build": "rslib build",
+       "dev": "rslib build --watch",
+       "test": "vitest"
+     }
+   }
+   ```
+
+3. Create `tsconfig.json`:
+   ```json
+   {
+     "extends": "@c15t/typescript-config/base.json",
+     "compilerOptions": {
+       "outDir": "dist"
+     },
+     "include": ["src"]
+   }
+   ```
+
+4. Create `rslib.config.ts`:
+   ```typescript
+   import { defineConfig } from '@rslib/core';
+   
+   export default defineConfig({
+     lib: [{
+       format: 'esm',
+       dts: true,
+     }],
+   });
+   ```
+
+5. Install from root:
+   ```bash
+   cd ../..
+   bun install
+   ```
+
+### Adding Dependencies
+
+**To a specific package:**
+```bash
+# Navigate to package
+cd packages/react
+
+# Add dependency
+bun add some-package
+
+# Add dev dependency
+bun add -D some-dev-package
+```
+
+**To root (shared dev dependencies):**
+```bash
+# From root directory
+bun add -D some-dev-package
+```
+
+**Link workspace packages:**
+```bash
+# In packages/react/package.json
+{
+  "dependencies": {
+    "c15t": "workspace:*"
+  }
+}
+```
+
+### Running Package Scripts
+
+**From root using Turbo:**
+```bash
+# Run build for all packages
+turbo build
+
+# Run build for specific package
+turbo build --filter=@c15t/react
+
+# Run with dependencies
+turbo build --filter=@c15t/react...
+```
+
+**From package directory:**
+```bash
+cd packages/react
+bun run build
+bun test
+```
+
+## Git Workflow
+
+### Creating a Feature Branch
+
+```bash
+# Sync with upstream
+git checkout main
+git pull upstream main
+
+# Create and switch to feature branch
+git switch -c feature/my-feature
+```
+
+### Making Commits
+
+Use [Conventional Commits](https://www.conventionalcommits.org/):
+
+```bash
+# Stage changes
+git add .
+
+# Commit with conventional format
+git commit -m "feat: add new feature"
+git commit -m "fix: resolve bug in consent manager"
+git commit -m "docs: update setup guide"
+```
+
+**Commit types:**
+- `feat:` - New feature
+- `fix:` - Bug fix
+- `docs:` - Documentation only
+- `style:` - Code style changes (formatting, etc.)
+- `refactor:` - Code changes that neither fix bugs nor add features
+- `perf:` - Performance improvements
+- `test:` - Adding or updating tests
+- `chore:` - Maintenance tasks
+
+### Git Hooks
+
+The project uses [Lefthook](https://github.com/evilmartians/lefthook) for git hooks:
+
+**Pre-commit:**
+- Runs Biome formatting
+- Runs linting on changed files
+- Runs type checking
+
+**Pre-push:**
+- Runs all tests
+- Ensures build passes
+
+<Note>
+If you need to skip hooks (not recommended), use `--no-verify`:
+```bash
+git commit --no-verify -m "message"
+```
+</Note>
+
+### Creating a Changeset
+
+When making changes that should be released:
+
+```bash
+bun run changeset
+```
+
+This interactive command will:
+1. Ask which packages changed
+2. Ask for the type of change (major, minor, patch)
+3. Ask for a description
+4. Create a changeset file in `.changeset/`
+
+Commit the changeset file with your changes:
+
+```bash
+git add .changeset/*.md
+git commit -m "chore: add changeset"
+```
+
+## Debugging
+
+### VS Code Debugging
+
+The project includes debug configurations in `.vscode/launch.json`:
+
+1. Open VS Code
+2. Set breakpoints in your code
+3. Press `F5` or go to Run > Start Debugging
+4. Select the appropriate debug configuration
+
+### Browser Debugging
+
+For React component debugging:
+
+```bash
+# Run tests with UI
+bun test --ui
+
+# Open browser to interact with tests
+```
+
+### Console Debugging
+
+The `@c15t/logger` package provides structured logging:
+
+```typescript
+import { logger } from '@c15t/logger';
+
+logger.debug('Debug message');
+logger.info('Info message');
+logger.warn('Warning message');
+logger.error('Error message');
+```
+
+## Troubleshooting
+
+### Bun Installation Issues
+
+**Issue:** `bun: command not found`
+
+**Solution:**
+```bash
+# Ensure Bun is in your PATH
+export PATH="$HOME/.bun/bin:$PATH"
+
+# Add to your shell profile (.bashrc, .zshrc, etc.)
+echo 'export PATH="$HOME/.bun/bin:$PATH"' >> ~/.zshrc
+```
+
+### Build Failures
+
+**Issue:** Build fails with TypeScript errors
+
+**Solution:**
+```bash
+# Clean and rebuild
+rm -rf packages/*/dist
+bun run build
+
+# Or clean node_modules and reinstall
+rm -rf node_modules packages/*/node_modules
+rm bun.lock
+bun install
+```
+
+### Test Failures
+
+**Issue:** Tests fail locally but pass in CI
+
+**Solution:**
+```bash
+# Clear Vitest cache
+rm -rf node_modules/.vitest
+
+# Reinstall dependencies
+bun install
+
+# Run tests
+bun test
+```
+
+### Git Hook Issues
+
+**Issue:** Git hooks fail or don't run
+
+**Solution:**
+```bash
+# Reinstall hooks
+bunx lefthook install
+
+# Test hooks manually
+bunx lefthook run pre-commit
+```
+
+### Port Already in Use
+
+**Issue:** Dev server fails to start (port in use)
+
+**Solution:**
+```bash
+# Find and kill process using port
+lsof -ti:3000 | xargs kill -9
+
+# Or use a different port
+PORT=3001 bun run dev
+```
+
+### Permission Errors
+
+**Issue:** Permission denied errors during install
+
+**Solution:**
+```bash
+# Don't use sudo with Bun
+# Instead, fix permissions
+sudo chown -R $USER ~/.bun
+
+# Reinstall Bun if necessary
+curl -fsSL https://bun.sh/install | bash
+```
+
+## Editor Setup
+
+### VS Code
+
+**Recommended Extensions:**
+
+The project includes a `.vscode/extensions.json` file with recommended extensions:
+
+- Biome (for formatting and linting)
+- TypeScript and JavaScript Language Features
+- Error Lens
+- GitLens
+
+Install them by opening the Command Palette (`Cmd/Ctrl+Shift+P`) and selecting "Extensions: Show Recommended Extensions".
+
+**Settings:**
+
+The `.vscode/settings.json` file configures:
+- Biome as the default formatter
+- Format on save
+- TypeScript version to use
+- Excluded files from search
+
+### Other Editors
+
+**Biome:**
+- Install the Biome extension for your editor
+- Configure to format on save
+
+**TypeScript:**
+- Use the workspace TypeScript version
+- Enable project references support
+
+## Performance Tips
+
+### Faster Installs
+
+```bash
+# Use Bun's native speed
+bun install
+
+# Skip optional dependencies
+bun install --no-optional
+```
+
+### Faster Builds
+
+```bash
+# Use Turbo's cache
+turbo build
+
+# Build only changed packages
+turbo build --filter=[HEAD^1]
+
+# Parallel builds
+turbo build --concurrency=10
+```
+
+### Faster Tests
+
+```bash
+# Run tests in parallel
+bun test --reporter=dot
+
+# Run only changed tests
+bun test --changed
+
+# Skip coverage
+bun test --coverage=false
+```
+
+## Keeping Your Fork Updated
+
+### Sync with Upstream
+
+```bash
+# Fetch upstream changes
+git fetch upstream
+
+# Switch to main
+git checkout main
+
+# Merge upstream main
+git merge upstream/main
+
+# Push to your fork
+git push origin main
+```
+
+### Rebase Feature Branch
+
+```bash
+# Switch to feature branch
+git checkout feature/my-feature
+
+# Rebase on latest main
+git rebase main
+
+# Force push (if already pushed)
+git push --force-with-lease
+```
+
+## Getting Help
+
+If you encounter issues:
+
+1. **Check existing issues**: [github.com/c15t/c15t/issues](https://github.com/c15t/c15t/issues)
+2. **Ask in Discord**: [c15t.link/discord](https://c15t.link/discord)
+3. **Create a discussion**: [github.com/c15t/c15t/discussions](https://github.com/c15t/c15t/discussions)
+4. **Open an issue**: Provide details about your environment and the problem
+
+## Next Steps
+
+Now that your environment is set up:
+
+1. Read the [Contributing Guide](/oss/contributing)
+2. Review the [Architecture](/oss/architecture)
+3. Check [open issues](https://github.com/c15t/c15t/issues) for tasks to work on
+4. Join the [Discord community](https://c15t.link/discord)
+
+Happy coding!

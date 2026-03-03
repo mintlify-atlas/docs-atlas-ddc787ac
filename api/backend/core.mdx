@@ -1,0 +1,408 @@
+---
+title: 'Core API'
+description: 'Core backend API for creating and managing c15t instances'
+icon: 'code'
+---
+
+## Overview
+
+The core backend API provides the main entry point for creating c15t consent management instances.
+
+## Functions
+
+### c15tInstance
+
+Creates a new c15t consent management instance with a unified request handler.
+
+#### Import
+
+```typescript
+import { c15tInstance } from '@c15t/backend';
+```
+
+#### Type Signature
+
+```typescript
+function c15tInstance(options: C15TOptions): C15TInstance
+```
+
+#### Parameters
+
+<ParamField path="options" type="C15TOptions" required>
+  Configuration options for the c15t instance.
+  
+  <Expandable title="options properties">
+    <ParamField path="adapter" type="DatabaseAdapter" required>
+      The database adapter to use. Supports Kysely, Drizzle, Prisma, TypeORM, and MongoDB.
+      
+      ```typescript
+      import { kyselyAdapter } from '@c15t/backend/adapters/kysely';
+      import { db } from './db';
+      
+      adapter: kyselyAdapter(db)
+      ```
+    </ParamField>
+    
+    <ParamField path="trustedOrigins" type="string[]" required>
+      Array of trusted origins for CORS configuration.
+      
+      ```typescript
+      trustedOrigins: ['https://example.com', 'https://app.example.com']
+      ```
+    </ParamField>
+    
+    <ParamField path="appName" type="string">
+      Application name for logging and telemetry. Defaults to `'c15t'`.
+    </ParamField>
+    
+    <ParamField path="basePath" type="string">
+      Base path for API routes. Defaults to `'/'`.
+      
+      ```typescript
+      basePath: '/api/consent'
+      ```
+    </ParamField>
+    
+    <ParamField path="logger" type="LoggerOptions">
+      Logger configuration options.
+      
+      <Expandable title="logger properties">
+        <ParamField path="level" type="'debug' | 'info' | 'warn' | 'error'">
+          Minimum log level to output.
+        </ParamField>
+        
+        <ParamField path="pretty" type="boolean">
+          Enable pretty-printed logs for development.
+        </ParamField>
+      </Expandable>
+    </ParamField>
+    
+    <ParamField path="advanced" type="object">
+      Advanced configuration options.
+      
+      <Expandable title="advanced properties">
+        <ParamField path="disableGeoLocation" type="boolean">
+          Disable geo-location detection. Banner will always be shown. Defaults to `false`.
+        </ParamField>
+        
+        <ParamField path="branding" type="'c15t' | 'consent' | 'none'">
+          Select which branding to show in the consent banner. Defaults to `'c15t'`.
+        </ParamField>
+        
+        <ParamField path="customTranslations" type="Record<string, Partial<Translations>>">
+          Override base translations for different languages.
+          
+          ```typescript
+          customTranslations: {
+            en: { common: { acceptAll: 'Accept All Cookies' } },
+            de: { common: { acceptAll: 'Alle Cookies akzeptieren' } },
+          }
+          ```
+        </ParamField>
+        
+        <ParamField path="openapi" type="object">
+          OpenAPI specification configuration.
+          
+          <Expandable title="openapi properties">
+            <ParamField path="enabled" type="boolean">
+              Enable/disable OpenAPI spec generation. Defaults to `true`.
+            </ParamField>
+            
+            <ParamField path="specPath" type="string">
+              Path to serve the OpenAPI JSON spec. Defaults to `'/spec.json'`.
+            </ParamField>
+            
+            <ParamField path="docsPath" type="string">
+              Path to serve the API documentation UI. Defaults to `'/docs'`.
+            </ParamField>
+            
+            <ParamField path="customUiTemplate" type="string">
+              Custom HTML template for API docs UI.
+            </ParamField>
+          </Expandable>
+        </ParamField>
+        
+        <ParamField path="telemetry" type="object">
+          Telemetry and tracing configuration.
+          
+          <Expandable title="telemetry properties">
+            <ParamField path="disabled" type="boolean">
+              Disable telemetry tracking.
+            </ParamField>
+            
+            <ParamField path="tracer" type="Tracer">
+              Custom OpenTelemetry tracer instance.
+            </ParamField>
+            
+            <ParamField path="defaultAttributes" type="Record<string, string | number | boolean>">
+              Default attributes to attach to all telemetry events.
+            </ParamField>
+          </Expandable>
+        </ParamField>
+        
+        <ParamField path="ipAddress" type="object">
+          IP address tracking configuration.
+          
+          <Expandable title="ipAddress properties">
+            <ParamField path="disableIpTracking" type="boolean">
+              Disable IP address tracking.
+            </ParamField>
+            
+            <ParamField path="ipAddressHeaders" type="string[]">
+              Override default IP address headers.
+              
+              ```typescript
+              ipAddressHeaders: ['x-forwarded-for', 'x-real-ip']
+              ```
+            </ParamField>
+          </Expandable>
+        </ParamField>
+      </Expandable>
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+#### Returns
+
+<ResponseField name="instance" type="C15TInstance">
+  A configured c15t instance with the following properties:
+  
+  <Expandable title="instance properties">
+    <ResponseField name="handler" type="(request: Request) => Promise<Response>">
+      Main request handler for processing HTTP requests.
+      
+      ```typescript
+      const response = await instance.handler(request);
+      ```
+    </ResponseField>
+    
+    <ResponseField name="options" type="C15TOptions">
+      The configuration options used for this instance.
+    </ResponseField>
+    
+    <ResponseField name="$context" type="Promise<C15TContext>">
+      Access to the underlying context including database, logger, and registry.
+    </ResponseField>
+    
+    <ResponseField name="router" type="Router">
+      The oRPC router for direct usage and type inference.
+    </ResponseField>
+    
+    <ResponseField name="getOpenAPISpec" type="() => Promise<Record<string, unknown>>">
+      Generates and returns the OpenAPI specification as a JSON object.
+    </ResponseField>
+    
+    <ResponseField name="getDocsUI" type="() => string">
+      Returns an HTML document with the API documentation UI.
+    </ResponseField>
+    
+    <ResponseField name="GET" type="(request: Request) => Promise<Response>">
+      Next.js-compatible GET handler.
+    </ResponseField>
+    
+    <ResponseField name="POST" type="(request: Request) => Promise<Response>">
+      Next.js-compatible POST handler.
+    </ResponseField>
+    
+    <ResponseField name="PUT" type="(request: Request) => Promise<Response>">
+      Next.js-compatible PUT handler.
+    </ResponseField>
+    
+    <ResponseField name="PATCH" type="(request: Request) => Promise<Response>">
+      Next.js-compatible PATCH handler.
+    </ResponseField>
+    
+    <ResponseField name="DELETE" type="(request: Request) => Promise<Response>">
+      Next.js-compatible DELETE handler.
+    </ResponseField>
+    
+    <ResponseField name="OPTIONS" type="(request: Request) => Promise<Response>">
+      Next.js-compatible OPTIONS handler.
+    </ResponseField>
+    
+    <ResponseField name="HEAD" type="(request: Request) => Promise<Response>">
+      Next.js-compatible HEAD handler.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Usage Examples
+
+### Basic Setup
+
+```typescript app/api/c15t/[...c15t]/route.ts
+import { c15tInstance } from '@c15t/backend';
+import { kyselyAdapter } from '@c15t/backend/adapters/kysely';
+import { db } from '@/lib/db';
+
+const instance = c15tInstance({
+  adapter: kyselyAdapter(db),
+  trustedOrigins: ['https://example.com'],
+});
+
+export const { GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD } = instance;
+```
+
+### With Custom Configuration
+
+```typescript
+import { c15tInstance } from '@c15t/backend';
+import { drizzleAdapter } from '@c15t/backend/adapters/drizzle';
+import { db } from '@/lib/db';
+
+const instance = c15tInstance({
+  adapter: drizzleAdapter(db),
+  trustedOrigins: [
+    'https://example.com',
+    'https://app.example.com',
+    'http://localhost:3000',
+  ],
+  appName: 'my-consent-app',
+  basePath: '/api/consent',
+  logger: {
+    level: 'debug',
+    pretty: true,
+  },
+  advanced: {
+    branding: 'none',
+    disableGeoLocation: false,
+    openapi: {
+      enabled: true,
+      specPath: '/api/consent/spec.json',
+      docsPath: '/api/consent/docs',
+    },
+  },
+});
+
+export const { GET, POST } = instance;
+```
+
+### Custom Request Handler
+
+```typescript server.ts
+import { c15tInstance } from '@c15t/backend';
+import { kyselyAdapter } from '@c15t/backend/adapters/kysely';
+import { db } from './db';
+
+const instance = c15tInstance({
+  adapter: kyselyAdapter(db),
+  trustedOrigins: ['*'],
+});
+
+// Use with any server framework
+const server = Bun.serve({
+  port: 3000,
+  async fetch(request) {
+    const url = new URL(request.url);
+    
+    if (url.pathname.startsWith('/api/c15t')) {
+      return instance.handler(request);
+    }
+    
+    return new Response('Not Found', { status: 404 });
+  },
+});
+
+console.log(`Server running at http://localhost:${server.port}`);
+```
+
+### With OpenAPI Documentation
+
+```typescript
+const instance = c15tInstance({
+  adapter: kyselyAdapter(db),
+  trustedOrigins: ['https://example.com'],
+  advanced: {
+    openapi: {
+      enabled: true,
+      specPath: '/spec.json',
+      docsPath: '/docs',
+    },
+  },
+});
+
+// Access OpenAPI spec programmatically
+const spec = await instance.getOpenAPISpec();
+console.log(JSON.stringify(spec, null, 2));
+
+// Get docs UI HTML
+const docsHtml = instance.getDocsUI();
+```
+
+## Helper Functions
+
+### defineConfig
+
+Helper function for defining database configuration with TypeScript support.
+
+```typescript
+import { defineConfig } from '@c15t/backend';
+import { kyselyAdapter } from '@c15t/backend/adapters/kysely';
+import { db } from './db';
+
+export const config = defineConfig({
+  adapter: kyselyAdapter(db),
+});
+```
+
+## Type Exports
+
+```typescript
+import type {
+  C15TOptions,
+  C15TContext,
+  C15TInstance,
+  ContractsInputs,
+  ContractsOutputs,
+} from '@c15t/backend';
+```
+
+### ContractsInputs
+
+Type-safe inputs for all API contracts.
+
+```typescript
+import type { ContractsInputs } from '@c15t/backend';
+
+// Infer input types
+type PostConsentInput = ContractsInputs['consent']['post'];
+type VerifyConsentInput = ContractsInputs['consent']['verify'];
+```
+
+### ContractsOutputs
+
+Type-safe outputs for all API contracts.
+
+```typescript
+import type { ContractsOutputs } from '@c15t/backend';
+
+// Infer output types
+type PostConsentOutput = ContractsOutputs['consent']['post'];
+type ShowBannerOutput = ContractsOutputs['consent']['showBanner'];
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Use Environment Variables" icon="gear">
+    Store sensitive configuration in environment variables, not in code.
+  </Card>
+  
+  <Card title="Enable Logging in Development" icon="terminal">
+    Use debug logging during development to troubleshoot issues.
+  </Card>
+  
+  <Card title="Configure CORS Carefully" icon="shield">
+    Only add trusted origins to prevent unauthorized access.
+  </Card>
+  
+  <Card title="Use Type Inference" icon="wand-magic-sparkles">
+    Leverage TypeScript types for contract inputs and outputs.
+  </Card>
+</CardGroup>
+
+## Related
+
+- [Router](/api/backend/router)
+- [Database Adapters](/api/backend/database-adapters)
+- [Contracts](/api/backend/contracts)

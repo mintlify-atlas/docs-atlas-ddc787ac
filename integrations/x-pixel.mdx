@@ -1,0 +1,382 @@
+---
+title: "X Pixel"
+description: "Integrate X Pixel (Twitter) for conversion tracking and advertising"
+icon: "x-twitter"
+---
+
+## Overview
+
+X Pixel (formerly Twitter Pixel) integration for X advertising conversion tracking. This integration manages the pixel lifecycle based on consent.
+
+<Info>
+  X Pixel is categorized as **marketing** by default.
+</Info>
+
+## Installation
+
+<CodeGroup>
+```bash npm
+npm install @c15t/scripts c15t
+```
+
+```bash yarn
+yarn add @c15t/scripts c15t
+```
+
+```bash pnpm
+pnpm add @c15t/scripts c15t
+```
+
+```bash bun
+bun add @c15t/scripts c15t
+```
+</CodeGroup>
+
+## Basic usage
+
+<CodeGroup>
+```typescript React
+import { loadScripts } from 'c15t';
+import { xPixel } from '@c15t/scripts/x-pixel';
+import { useEffect } from 'react';
+
+export function App() {
+  useEffect(() => {
+    const twitterPixel = xPixel({
+      pixelId: 'o1234',
+    });
+
+    loadScripts([twitterPixel], {
+      consents: {
+        necessary: true,
+        functionality: false,
+        measurement: false,
+        marketing: true, // X Pixel requires marketing consent
+        experience: false,
+      },
+    });
+  }, []);
+
+  return <div>Your app</div>;
+}
+```
+
+```typescript Next.js
+import { loadScripts } from 'c15t';
+import { xPixel } from '@c15t/scripts/x-pixel';
+import { useEffect } from 'react';
+
+export default function RootLayout({ children }) {
+  useEffect(() => {
+    const twitterPixel = xPixel({
+      pixelId: 'o1234',
+    });
+
+    loadScripts([twitterPixel], {
+      consents: {
+        necessary: true,
+        functionality: false,
+        measurement: false,
+        marketing: true,
+        experience: false,
+      },
+    });
+  }, []);
+
+  return <html><body>{children}</body></html>;
+}
+```
+
+```typescript Vanilla JS
+import { loadScripts } from 'c15t';
+import { xPixel } from '@c15t/scripts/x-pixel';
+
+const twitterPixel = xPixel({
+  pixelId: 'o1234',
+});
+
+loadScripts([twitterPixel], {
+  consents: {
+    necessary: true,
+    functionality: false,
+    measurement: false,
+    marketing: true,
+    experience: false,
+  },
+});
+```
+</CodeGroup>
+
+## Configuration
+
+### Options
+
+<ParamField path="pixelId" type="string" required>
+  Your X Pixel ID. Usually starts with `o` followed by numbers.
+  
+  **Example**: `o1234`
+</ParamField>
+
+<ParamField path="script" type="Partial<Script>">
+  Override or extend default script values.
+  
+  **Defaults**:
+  - `id`: `'x-pixel'`
+  - `category`: `'marketing'`
+  - `src`: `https://static.ads-twitter.com/uwt.js`
+</ParamField>
+
+## Tracking events
+
+Use the provided helper function or global `twq` to track conversion events:
+
+```typescript
+import { xPixelEvent } from '@c15t/scripts/x-pixel';
+
+// Using the helper (recommended)
+xPixelEvent('tw-xxxx-xxxx', {
+  value: 99.99,
+  currency: 'USD',
+  conversion_id: 'order-123',
+});
+
+// Using global twq directly
+window.twq?.('event', 'tw-xxxx-xxxx', {
+  value: 99.99,
+  currency: 'USD',
+});
+```
+
+## Event types and parameters
+
+X Pixel events are identified by event IDs (starting with `tw-`).
+
+### Available parameters
+
+<ParamField path="value" type="number">
+  Total value of the conversion event (e.g., purchase amount).
+  
+  **Example**: `99.99`
+</ParamField>
+
+<ParamField path="currency" type="string">
+  ISO 4217 currency code.
+  
+  **Example**: `USD`, `EUR`, `GBP`
+</ParamField>
+
+<ParamField path="conversion_id" type="string">
+  Unique identifier for the event for deduplication.
+  
+  **Example**: `tw-xxxx-xxxx`
+</ParamField>
+
+<ParamField path="contents" type="XPixelContent[]">
+  Array of products/items associated with the conversion.
+  
+  See [content structure](#content-structure) below.
+</ParamField>
+
+<ParamField path="search_string" type="string">
+  Search query associated with the conversion.
+  
+  **Example**: `running shoes`
+</ParamField>
+
+<ParamField path="description" type="string">
+  Description of the conversion event.
+  
+  **Example**: `Premium subscription purchase`
+</ParamField>
+
+<ParamField path="status" type="boolean">
+  Status of the conversion event.
+  
+  **Example**: `true` for completed
+</ParamField>
+
+### Content structure
+
+Each content item in the `contents` array supports:
+
+```typescript
+{
+  content_id: string;        // Product SKU or GTIN (required)
+  content_name?: string;     // Product name
+  content_type?: string;     // Google product taxonomy category
+  content_price?: number;    // Unit price
+  num_items?: number;        // Quantity
+  content_group_id?: string; // Product variant group ID
+}
+```
+
+## Advanced usage
+
+### E-commerce tracking
+
+Track purchases with product details:
+
+```typescript
+import { xPixelEvent } from '@c15t/scripts/x-pixel';
+
+xPixelEvent('tw-xxxxx-yyyyy', {
+  value: 149.98,
+  currency: 'USD',
+  conversion_id: 'order-789',
+  contents: [
+    {
+      content_id: 'SKU-123',
+      content_name: 'Running Shoes',
+      content_type: 'Apparel & Accessories > Shoes',
+      content_price: 89.99,
+      num_items: 1,
+    },
+    {
+      content_id: 'SKU-456',
+      content_name: 'Sports Socks',
+      content_type: 'Apparel & Accessories > Clothing Accessories > Socks',
+      content_price: 29.99,
+      num_items: 2,
+    },
+  ],
+});
+```
+
+### Lead generation
+
+Track lead form submissions:
+
+```typescript
+xPixelEvent('tw-xxxxx-zzzzz', {
+  value: 0,
+  currency: 'USD',
+  description: 'Newsletter signup',
+});
+```
+
+### Search tracking
+
+Track search events:
+
+```typescript
+xPixelEvent('tw-xxxxx-aaaaa', {
+  search_string: 'wireless headphones',
+  description: 'Product search',
+});
+```
+
+### Content engagement
+
+Track content views or engagement:
+
+```typescript
+xPixelEvent('tw-xxxxx-bbbbb', {
+  contents: [
+    {
+      content_id: 'article-123',
+      content_name: 'How to optimize your ads',
+      content_type: 'article',
+    },
+  ],
+  description: 'Blog post view',
+});
+```
+
+### Custom callbacks
+
+```typescript
+const twitterPixel = xPixel({
+  pixelId: 'o1234',
+  script: {
+    onLoad: () => {
+      console.log('X Pixel loaded');
+    },
+    onDelete: () => {
+      console.log('X Pixel removed');
+      // Deletes window.twq
+    },
+  },
+});
+```
+
+## How it works
+
+1. **On load**: Injects X Pixel loader script inline and initializes with `twq('config', pixelId)`
+2. **On delete**: Deletes `window.twq` object and removes the script
+
+<Warning>
+  Unlike some other integrations, X Pixel does not persist after consent is revoked. The script and tracking object are fully removed.
+</Warning>
+
+## Finding your Pixel ID and Event IDs
+
+1. Log in to [X Ads Manager](https://ads.twitter.com/)
+2. Go to **Tools** → **Events Manager**
+3. Your Pixel ID is shown at the top
+4. Event IDs are listed under **Conversions** (format: `tw-xxxxx-yyyyy`)
+
+## Content types
+
+Use [Google's product taxonomy](https://www.google.com/basepages/producttype/taxonomy.en-US.txt) for `content_type` values:
+
+```typescript
+const examples = [
+  'Apparel & Accessories > Shoes',
+  'Electronics > Computers',
+  'Home & Garden > Kitchen & Dining',
+  'Sports & Outdoors > Exercise & Fitness',
+];
+```
+
+## TypeScript
+
+Full TypeScript support with typed event parameters:
+
+```typescript
+import type { Script } from 'c15t';
+import { 
+  xPixel, 
+  xPixelEvent,
+  type XPixelOptions,
+  type XPixelEvent as XPixelEventType,
+  type XPixelContent,
+} from '@c15t/scripts/x-pixel';
+
+const options: XPixelOptions = {
+  pixelId: 'o1234',
+};
+
+const script: Script = xPixel(options);
+
+// Type-safe event parameters
+const eventData: XPixelEventType = {
+  value: 99.99,
+  currency: 'USD',
+  contents: [
+    {
+      content_id: 'SKU-123',
+      content_name: 'Product',
+      content_price: 99.99,
+      num_items: 1,
+    },
+  ],
+};
+
+xPixelEvent('tw-xxxxx-yyyyy', eventData);
+```
+
+## Resources
+
+<CardGroup cols={2}>
+  <Card title="X Pixel Guide" icon="x-twitter" href="https://ads.twitter.com/help/article/x-pixel">
+    Official X Pixel setup guide
+  </Card>
+  
+  <Card title="Event Parameters" icon="list" href="https://business.x.com/en/help/campaign-measurement-and-analytics/conversion-tracking-for-websites#event-types-and-parameters">
+    Complete event types and parameters reference
+  </Card>
+  
+  <Card title="Source Code" icon="github" href="https://github.com/c15t/c15t/blob/main/packages/scripts/src/x-pixel.ts">
+    View the integration source code
+  </Card>
+</CardGroup>

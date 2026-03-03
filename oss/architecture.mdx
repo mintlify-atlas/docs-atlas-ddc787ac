@@ -1,0 +1,449 @@
+---
+title: Architecture
+description: Understanding the c15t monorepo architecture and package structure
+---
+
+c15t is built as a monorepo containing multiple packages that work together to provide a complete consent management solution. This document explains the architecture and how different packages interact.
+
+## Monorepo Structure
+
+The project uses a monorepo structure managed by Bun workspaces and Turbo for build orchestration:
+
+```
+c15t/
+├── packages/          # Public packages published to npm
+├── internals/         # Internal tooling and configs
+├── benchmarks/        # Performance benchmarks
+├── scripts/           # Build and utility scripts
+├── docs/             # Documentation
+└── changelog/        # Changelog management
+```
+
+## Package Categories
+
+### Public Packages (`packages/`)
+
+These are the packages published to npm that users interact with:
+
+#### Core Library
+
+**`c15t` (packages/core)**
+- Framework-agnostic consent management core
+- Lightweight and performant
+- Works in any JavaScript environment
+- Handles consent state management
+- Provides script loading capabilities
+- SSR compatible
+
+#### Framework Integrations
+
+**`@c15t/react` (packages/react)**
+- React components and hooks
+- Compatible with React 16.8+ through 19
+- Full 'use client' support for Next.js
+- Headless and customizable UI
+- Context-based state management
+
+**`@c15t/nextjs` (packages/nextjs)**
+- Next.js specific integration
+- Works with Next.js 13, 14, and 15
+- Server-side rendering support
+- App Router and Pages Router compatibility
+- Middleware integration
+
+#### Backend & SDK
+
+**`@c15t/backend` (packages/backend)**
+- Consent policy engine
+- Geo-location detection
+- Server-side translation
+- Audit logging
+- Domain and policy management
+- Database integration
+
+**`@c15t/node-sdk` (packages/node-sdk)**
+- Type-safe Node.js API client
+- Fully typed API interfaces
+- Flexible configuration
+- Comprehensive error handling
+
+#### Utilities & Tools
+
+**`@c15t/cli` (packages/cli)**
+- Command-line interface
+- Configuration generation
+- Database migrations
+- Multi-framework scaffolding
+- GitHub integration
+
+**`@c15t/scripts` (packages/scripts)**
+- Prebuilt script snippets
+- Popular analytics tool integrations
+- Google Tag Manager, Meta Pixel, PostHog, etc.
+- Easy integration with c15t's script loader
+
+**`@c15t/translations` (packages/translations)**
+- Internationalization support
+- Type-safe translation interfaces
+- Modular translation imports
+- GDPR-compliant language support
+
+**`@c15t/logger` (packages/logger)**
+- Unified logging system
+- Development and production modes
+- Structured logging
+
+**`@c15t/dev-tools` (packages/dev-tools)**
+- Developer utilities (experimental)
+- React component library
+- Radix UI and Tailwind CSS integration
+- State management helpers
+
+**`@c15t/shared` (packages/shared)**
+- Shared types and utilities
+- Common interfaces
+- Reusable helpers
+
+### Internal Packages (`internals/`)
+
+These packages are used internally for development and building:
+
+**`@c15t/typescript-config` (internals/typescript-config)**
+- Shared TypeScript configurations
+- Base configs for different package types
+- Ensures consistency across packages
+
+**`@c15t/vitest-config` (internals/vitest-config)**
+- Shared Vitest test configurations
+- Browser testing setup
+- Coverage configuration
+
+**`@c15t/bundle-analysis-action` (internals/bundle-analysis-action)**
+- GitHub Action for bundle size analysis
+- Tracks package size over time
+
+## Build System
+
+### Turbo Configuration
+
+The project uses [Turbo](https://turbo.build/) for build orchestration. Key tasks include:
+
+```json
+{
+  "build": {
+    "dependsOn": ["^build"],
+    "outputs": [".next/**", "dist/**"]
+  },
+  "test": {
+    "dependsOn": ["^build"],
+    "outputs": ["coverage/**"]
+  },
+  "lint": {
+    "dependsOn": ["^lint"]
+  }
+}
+```
+
+**Task Dependencies:**
+- `^build` means "build dependencies first"
+- `^lint` means "lint dependencies first"
+- This ensures correct build order in the monorepo
+
+### Build Tools
+
+**RSLib (Rspack Library)**
+- Used for building library packages
+- Fast, modern bundler
+- Supports multiple output formats (ESM, CJS)
+- Configuration in `rslib.config.ts` files
+
+**Biome**
+- Code formatting and linting
+- Fast, modern alternative to ESLint + Prettier
+- Configuration in `biome.jsonc`
+
+**TypeScript**
+- Type checking across all packages
+- Shared configs from `@c15t/typescript-config`
+- Strict mode enabled
+
+**Vitest**
+- Testing framework
+- Browser testing with Playwright
+- Coverage reporting with Istanbul
+
+## Package Dependencies
+
+### Dependency Graph
+
+```mermaid
+graph TD
+    A[c15t/core] --> B[@c15t/react]
+    A --> C[@c15t/nextjs]
+    A --> D[@c15t/backend]
+    E[@c15t/translations] --> A
+    E --> B
+    E --> C
+    F[@c15t/scripts] --> A
+    G[@c15t/logger] --> A
+    G --> D
+    H[@c15t/shared] --> A
+    H --> D
+    I[@c15t/node-sdk] --> D
+```
+
+### Key Principles
+
+1. **Core is Foundation** - The `c15t` package is the foundation all other packages build on
+2. **Framework Adapters** - React and Next.js packages wrap the core with framework-specific APIs
+3. **Backend Independence** - Backend package can be used standalone or with frontend packages
+4. **Shared Utilities** - Common code lives in `@c15t/shared` to avoid duplication
+
+## Workspace Configuration
+
+Bun workspaces are configured in `package.json`:
+
+```json
+{
+  "workspaces": [
+    "configs/*",
+    "packages/**",
+    "internals/**"
+  ]
+}
+```
+
+This allows:
+- Installing all dependencies with a single `bun install`
+- Running scripts across all packages
+- Linking local packages automatically
+- Shared dependency management
+
+## Development Scripts
+
+From the root `package.json`:
+
+### Building
+
+```bash
+# Build all packages
+bun run build
+
+# Build only library packages (excludes examples)
+bun run build:libs
+```
+
+### Testing
+
+```bash
+# Run all tests
+bun run test
+
+# Run tests with coverage
+turbo run test --coverage
+```
+
+### Code Quality
+
+```bash
+# Format code with Biome
+bun run fmt
+
+# Lint code
+bun run lint
+
+# Auto-fix lint issues
+bun run lint:fix
+
+# Type check
+bun run check-types
+```
+
+### Development
+
+```bash
+# Start all packages in dev mode (excludes examples)
+bun run dev
+
+# Start specific package
+cd packages/react && bun run dev
+```
+
+### Versioning
+
+```bash
+# Create a changeset
+bun run changeset
+
+# Version packages
+bun run version
+
+# Publish to npm
+bun run release
+```
+
+## Code Organization
+
+Each package follows a consistent structure:
+
+```
+package-name/
+├── src/              # Source code
+│   ├── index.ts      # Main entry point
+│   ├── types.ts      # Type definitions
+│   └── ...           # Feature modules
+├── dist/             # Built output (gitignored)
+├── package.json      # Package manifest
+├── tsconfig.json     # TypeScript config
+├── rslib.config.ts   # Build config
+├── vitest.config.ts  # Test config
+└── README.md         # Package documentation
+```
+
+## Testing Strategy
+
+### Unit Tests
+
+- Each package has its own test suite
+- Tests are colocated with source code or in `__tests__` directories
+- Run with Vitest
+
+### Integration Tests
+
+- Cross-package integration tests in relevant packages
+- Test real-world usage scenarios
+
+### Browser Tests
+
+- React components tested in real browsers
+- Uses Vitest browser mode with Playwright
+- Tests user interactions and DOM behavior
+
+### Coverage
+
+- Coverage reports generated with Istanbul
+- Minimum coverage thresholds enforced
+- Reports available in `coverage/` directories
+
+## CI/CD Pipeline
+
+### GitHub Actions
+
+The project uses GitHub Actions for:
+
+1. **Code Quality** (`ci.yml`)
+   - Lint all packages
+   - Type check all packages
+   - Run all tests
+   - Build all packages
+
+2. **Release** (`release.yml`)
+   - Triggered on merge to main
+   - Creates changesets
+   - Publishes to npm
+   - Creates GitHub releases
+
+3. **Dependencies** (Renovate)
+   - Automatic dependency updates
+   - Automated PR creation
+   - Grouped updates
+
+## Performance Considerations
+
+### Bundle size
+
+- Core package is kept minimal (less than 5KB gzipped)
+- Tree-shakeable exports
+- No unnecessary dependencies
+- Bundle size tracked in CI
+
+### Build Performance
+
+- Turbo caching for fast rebuilds
+- Parallel builds where possible
+- Incremental TypeScript compilation
+
+### Runtime Performance
+
+- Minimal runtime overhead
+- Lazy loading where appropriate
+- Efficient state management
+- No unnecessary re-renders
+
+## Development Workflow
+
+### Making Changes
+
+1. **Clone and install**
+   ```bash
+   git clone https://github.com/c15t/c15t.git
+   cd c15t
+   bun install
+   ```
+
+2. **Create feature branch**
+   ```bash
+   git switch -c feature/my-feature
+   ```
+
+3. **Make changes**
+   - Edit source files
+   - Add tests
+   - Update documentation
+
+4. **Test changes**
+   ```bash
+   bun run test
+   bun run lint
+   bun run build
+   ```
+
+5. **Create changeset** (if applicable)
+   ```bash
+   bun run changeset
+   ```
+
+6. **Commit and push**
+   ```bash
+   git add .
+   git commit -m "feat: add new feature"
+   git push origin feature/my-feature
+   ```
+
+7. **Open pull request**
+
+### Local Development
+
+**Link packages locally:**
+```bash
+# In c15t monorepo
+cd packages/react
+bun link
+
+# In your project
+bun link @c15t/react
+```
+
+**Watch mode:**
+```bash
+# Watch and rebuild on changes
+turbo watch build --filter=@c15t/react
+```
+
+## Key Technologies
+
+- **Runtime**: Bun (Node.js compatible)
+- **Language**: TypeScript
+- **Build Tool**: RSLib (Rspack)
+- **Bundler**: Turbo
+- **Testing**: Vitest
+- **Linting**: Biome
+- **Versioning**: Changesets
+- **CI/CD**: GitHub Actions
+
+## Learn More
+
+- [Contributing Guide](/oss/contributing)
+- [Development Setup](/oss/development-setup)
+- [Code of Conduct](/oss/code-of-conduct)
+- [GitHub Repository](https://github.com/c15t/c15t)

@@ -1,0 +1,287 @@
+---
+title: "LinkedIn Insight Tag"
+description: "Integrate LinkedIn Insight Tag for conversion tracking and analytics"
+icon: "linkedin"
+---
+
+## Overview
+
+LinkedIn Insight Tag integration for LinkedIn advertising conversion tracking and website demographics analytics. This integration automatically manages the tag lifecycle based on consent.
+
+<Info>
+  LinkedIn Insight Tag is categorized as **marketing** by default.
+</Info>
+
+## Installation
+
+<CodeGroup>
+```bash npm
+npm install @c15t/scripts c15t
+```
+
+```bash yarn
+yarn add @c15t/scripts c15t
+```
+
+```bash pnpm
+pnpm add @c15t/scripts c15t
+```
+
+```bash bun
+bun add @c15t/scripts c15t
+```
+</CodeGroup>
+
+## Basic usage
+
+<CodeGroup>
+```typescript React
+import { loadScripts } from 'c15t';
+import { linkedinInsights } from '@c15t/scripts/linkedin-insights';
+import { useEffect } from 'react';
+
+export function App() {
+  useEffect(() => {
+    const linkedinScript = linkedinInsights({
+      id: '1234567',
+    });
+
+    loadScripts([linkedinScript], {
+      consents: {
+        necessary: true,
+        functionality: false,
+        measurement: false,
+        marketing: true, // LinkedIn requires marketing consent
+        experience: false,
+      },
+    });
+  }, []);
+
+  return <div>Your app</div>;
+}
+```
+
+```typescript Next.js
+import { loadScripts } from 'c15t';
+import { linkedinInsights } from '@c15t/scripts/linkedin-insights';
+import { useEffect } from 'react';
+
+export default function RootLayout({ children }) {
+  useEffect(() => {
+    const linkedinScript = linkedinInsights({
+      id: '1234567',
+    });
+
+    loadScripts([linkedinScript], {
+      consents: {
+        necessary: true,
+        functionality: false,
+        measurement: false,
+        marketing: true,
+        experience: false,
+      },
+    });
+  }, []);
+
+  return <html><body>{children}</body></html>;
+}
+```
+
+```typescript Vanilla JS
+import { loadScripts } from 'c15t';
+import { linkedinInsights } from '@c15t/scripts/linkedin-insights';
+
+const linkedinScript = linkedinInsights({
+  id: '1234567',
+});
+
+loadScripts([linkedinScript], {
+  consents: {
+    necessary: true,
+    functionality: false,
+    measurement: false,
+    marketing: true,
+    experience: false,
+  },
+});
+```
+</CodeGroup>
+
+## Configuration
+
+### Options
+
+<ParamField path="id" type="string" required>
+  Your LinkedIn Partner ID (numeric string).
+  
+  **Example**: `1234567`
+</ParamField>
+
+<ParamField path="script" type="Partial<Script>">
+  Override or extend default script values.
+  
+  **Defaults**:
+  - `id`: `'linkedin-insights'`
+  - `category`: `'marketing'`
+  - `src`: `https://snap.licdn.com/li.lms-analytics/insight.min.js`
+</ParamField>
+
+## Tracking events
+
+LinkedIn Insight Tag tracks page views automatically. For conversion tracking:
+
+```typescript
+// Track a conversion
+window.lintrk('track', { conversion_id: 1234567 });
+```
+
+## Conversion tracking
+
+Set up conversion tracking in LinkedIn Campaign Manager and track events:
+
+### Basic conversion
+
+```typescript
+// Track conversion by ID
+window.lintrk('track', { conversion_id: 1234567 });
+```
+
+### Conversion with value
+
+```typescript
+// Track conversion with monetary value
+window.lintrk('track', { 
+  conversion_id: 1234567,
+  conversion_value: 99.99,
+  currency: 'USD',
+});
+```
+
+### Lead generation
+
+```typescript
+// Track lead form submission
+window.lintrk('track', { 
+  conversion_id: 1234567,
+});
+```
+
+## Advanced usage
+
+### Multiple conversions
+
+Track different conversions throughout your funnel:
+
+```typescript
+// Sign-up conversion
+function trackSignup() {
+  window.lintrk('track', { 
+    conversion_id: 1111111,
+  });
+}
+
+// Purchase conversion
+function trackPurchase(value: number) {
+  window.lintrk('track', { 
+    conversion_id: 2222222,
+    conversion_value: value,
+    currency: 'USD',
+  });
+}
+
+// Premium upgrade conversion
+function trackUpgrade() {
+  window.lintrk('track', { 
+    conversion_id: 3333333,
+  });
+}
+```
+
+### Custom callbacks
+
+```typescript
+const linkedinScript = linkedinInsights({
+  id: '1234567',
+  script: {
+    onLoad: () => {
+      console.log('LinkedIn Insight Tag loaded');
+    },
+    onDelete: () => {
+      console.log('LinkedIn Insight Tag removed');
+      // Calls ORIBILI._DEBUG.disableScript() internally
+    },
+  },
+});
+```
+
+### Custom script source
+
+Override the script source URL:
+
+```typescript
+const linkedinScript = linkedinInsights({
+  id: '1234567',
+  script: {
+    src: 'https://your-cdn.com/linkedin-insights.js',
+  },
+});
+```
+
+## How it works
+
+1. **Before script loads**: Creates initialization script that sets `_linkedin_partner_id` and adds it to `_linkedin_data_partner_ids` array
+2. **On load**: Loads LinkedIn Insight Tag script and begins tracking
+3. **On delete**: Calls `ORIBILI._DEBUG.disableScript()` to stop tracking and removes initialization script
+
+<Warning>
+  Unlike some other integrations, LinkedIn Insight Tag does not persist after consent is revoked. The script is fully removed from the page.
+</Warning>
+
+## Finding your Partner ID
+
+1. Log in to [LinkedIn Campaign Manager](https://www.linkedin.com/campaignmanager)
+2. Go to **Account Assets** → **Insight Tag**
+3. Your Partner ID is shown in the tag code
+
+## Website demographics
+
+LinkedIn Insight Tag also provides website demographics analytics:
+
+- View visitor demographics in LinkedIn Campaign Manager
+- See job titles, functions, industries, and company sizes
+- Analyze visitor engagement metrics
+
+<Info>
+  Website demographics are aggregated and anonymous. Individual visitor data is not available.
+</Info>
+
+## TypeScript
+
+Full TypeScript support:
+
+```typescript
+import type { Script } from 'c15t';
+import { linkedinInsights, type LinkedInInsightsOptions } from '@c15t/scripts/linkedin-insights';
+
+const options: LinkedInInsightsOptions = {
+  id: '1234567',
+};
+
+const script: Script = linkedinInsights(options);
+```
+
+## Resources
+
+<CardGroup cols={2}>
+  <Card title="LinkedIn Insight Tag" icon="linkedin" href="https://business.linkedin.com/marketing-solutions/insight-tag">
+    Official LinkedIn Insight Tag documentation
+  </Card>
+  
+  <Card title="Conversion Tracking" icon="bullseye" href="https://business.linkedin.com/marketing-solutions/ad-libraries/insights">
+    Set up conversion tracking in Campaign Manager
+  </Card>
+  
+  <Card title="Source Code" icon="github" href="https://github.com/c15t/c15t/blob/main/packages/scripts/src/linkedin-insights.ts">
+    View the integration source code
+  </Card>
+</CardGroup>

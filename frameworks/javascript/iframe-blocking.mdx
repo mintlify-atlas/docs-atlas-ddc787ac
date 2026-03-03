@@ -1,0 +1,452 @@
+---
+title: 'Iframe Blocking'
+description: 'Block third-party iframes until users grant consent'
+---
+
+# Iframe Blocking
+
+The c15t JavaScript SDK includes an iframe blocker that prevents third-party iframes from loading until users grant the necessary consent. This is essential for GDPR compliance when embedding content from services like YouTube, Google Maps, or social media platforms.
+
+## Quick Start
+
+The iframe blocker is automatically initialized when you create a consent manager store:
+
+```typescript
+import { createConsentManagerStore, configureConsentManager } from 'c15t';
+
+const manager = configureConsentManager({
+  backendURL: '/api/c15t',
+});
+
+const store = createConsentManagerStore(manager, {
+  iframeBlockerConfig: {
+    disableAutomaticBlocking: false, // Enable automatic iframe blocking
+  },
+});
+```
+
+## How It Works
+
+The iframe blocker:
+1. **Monitors** all iframes on the page using a MutationObserver
+2. **Checks** each iframe for a `data-category` attribute
+3. **Blocks** iframes if the required consent hasn't been granted
+4. **Unblocks** iframes automatically when consent is granted
+
+## Marking Iframes for Blocking
+
+Add a `data-category` attribute to iframes that require consent:
+
+```html
+<!-- YouTube embed - requires marketing consent -->
+<iframe 
+  data-category="marketing"
+  data-src="https://www.youtube.com/embed/VIDEO_ID"
+  width="560" 
+  height="315"
+></iframe>
+
+<!-- Google Maps - requires functionality consent -->
+<iframe 
+  data-category="functionality"
+  data-src="https://www.google.com/maps/embed?pb=..."
+  width="600" 
+  height="450"
+></iframe>
+
+<!-- Twitter embed - requires marketing consent -->
+<iframe
+  data-category="marketing"
+  data-src="https://platform.twitter.com/embed/..."
+  width="500"
+  height="600"
+></iframe>
+```
+
+<Note>
+  Use `data-src` instead of `src` for consent-gated iframes. The blocker will move `data-src` to `src` when consent is granted.
+</Note>
+
+## Consent Categories
+
+Valid consent categories match the c15t consent types:
+
+- `necessary` - Essential functionality
+- `functionality` - Enhanced features
+- `measurement` - Analytics and metrics
+- `marketing` - Advertising and tracking
+- `experience` - Personalization
+
+```html
+<!-- Analytics iframe -->
+<iframe 
+  data-category="measurement"
+  data-src="https://analytics-dashboard.example.com"
+></iframe>
+
+<!-- Social media widget -->
+<iframe 
+  data-category="marketing"
+  data-src="https://facebook.com/plugins/..."
+></iframe>
+```
+
+## Configuration
+
+### IframeBlockerConfig
+
+<ParamField path="disableAutomaticBlocking" type="boolean" default="false">
+  When `true`, disables automatic iframe blocking. You'll need to manually call `processIframes()`.
+</ParamField>
+
+See type definition at `src/libs/iframe-blocker/types.ts:6`
+
+```typescript
+const store = createConsentManagerStore(manager, {
+  iframeBlockerConfig: {
+    disableAutomaticBlocking: false,
+  },
+});
+```
+
+## Programmatic Control
+
+Manually control iframe blocking using the store methods:
+
+### Process All Iframes
+
+Manually process all iframes based on current consent state:
+
+```typescript
+// Process iframes manually
+store.getState().processIframes();
+```
+
+### Update Consent State
+
+The iframe blocker automatically reacts to consent changes:
+
+```typescript
+// Grant marketing consent - YouTube iframes will automatically unblock
+await store.getState().saveConsents('all');
+
+// Revoke marketing consent - YouTube iframes will be blocked again
+store.getState().setConsent('marketing', false);
+await store.getState().saveConsents('custom');
+```
+
+## Direct API Usage
+
+For advanced use cases, you can use the iframe blocker API directly:
+
+```typescript
+import { createIframeBlocker } from 'c15t';
+
+// Create iframe blocker with initial consent state
+const blocker = createIframeBlocker(
+  {
+    disableAutomaticBlocking: false,
+  },
+  {
+    necessary: true,
+    functionality: false,
+    measurement: false,
+    marketing: false,
+    experience: false,
+  }
+);
+
+// Update consent state
+blocker.updateConsents({
+  marketing: true, // Unblock marketing iframes
+});
+
+// Manually process iframes
+blocker.processIframes();
+
+// Clean up when done
+blocker.destroy();
+```
+
+See API at `src/libs/iframe-blocker/core.ts`
+
+## IframeBlocker Interface
+
+```typescript
+interface IframeBlocker {
+  /**
+   * Updates the consents and processes iframes accordingly
+   */
+  updateConsents: (newConsents: Partial<ConsentState>) => void;
+
+  /**
+   * Processes all iframes on the page based on current consent state
+   */
+  processIframes: () => void;
+
+  /**
+   * Destroys the iframe blocker and restores original behavior
+   */
+  destroy: () => void;
+}
+```
+
+See type definition at `src/libs/iframe-blocker/types.ts:14`
+
+## Examples
+
+### Example 1: YouTube Embeds
+
+```html
+<!-- Blocked until marketing consent is granted -->
+<div class="video-container">
+  <iframe
+    data-category="marketing"
+    data-src="https://www.youtube.com/embed/dQw4w9WgXcQ"
+    width="560"
+    height="315"
+    frameborder="0"
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+    allowfullscreen
+  ></iframe>
+</div>
+```
+
+```typescript
+// When user grants marketing consent, the iframe src will be set automatically
+await store.getState().saveConsents('all');
+```
+
+See test example at `src/libs/iframe-blocker/__tests__/core.test.ts:68`
+
+### Example 2: Google Maps
+
+```html
+<!-- Blocked until functionality consent is granted -->
+<iframe
+  data-category="functionality"
+  data-src="https://www.google.com/maps/embed?pb=!1m18!1m12..."
+  width="600"
+  height="450"
+  style="border:0;"
+  allowfullscreen=""
+  loading="lazy"
+></iframe>
+```
+
+```typescript
+// Grant functionality consent
+store.getState().setConsent('functionality', true);
+await store.getState().saveConsents('custom');
+// Google Maps iframe will automatically load
+```
+
+See test example at `src/libs/iframe-blocker/__tests__/core.test.ts:279`
+
+### Example 3: Social Media Widgets
+
+```html
+<!-- Multiple iframes with different categories -->
+<div class="social-widgets">
+  <!-- Twitter timeline -->
+  <iframe
+    data-category="marketing"
+    data-src="https://platform.twitter.com/widgets/..."
+    width="500"
+    height="600"
+  ></iframe>
+  
+  <!-- Facebook page plugin -->
+  <iframe
+    data-category="marketing"
+    data-src="https://www.facebook.com/plugins/page.php?..."
+    width="340"
+    height="500"
+  ></iframe>
+  
+  <!-- Instagram embed (no category - always allowed) -->
+  <iframe
+    src="https://www.instagram.com/p/..."
+    width="400"
+    height="480"
+  ></iframe>
+</div>
+```
+
+```typescript
+// When marketing consent is granted, both Twitter and Facebook iframes load
+await store.getState().saveConsents('all');
+
+// Instagram iframe loads immediately (no data-category attribute)
+```
+
+See test example at `src/libs/iframe-blocker/__tests__/core.test.ts:323`
+
+### Example 4: Custom Placeholder UI
+
+```html
+<style>
+  .iframe-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f0f0f0;
+    border: 2px dashed #ccc;
+    min-height: 315px;
+  }
+  
+  .iframe-placeholder.hidden {
+    display: none;
+  }
+</style>
+
+<div class="video-wrapper">
+  <div class="iframe-placeholder" id="youtube-placeholder">
+    <div>
+      <p>This content requires marketing consent</p>
+      <button onclick="acceptMarketing()">Accept & Load Video</button>
+    </div>
+  </div>
+  
+  <iframe
+    id="youtube-video"
+    data-category="marketing"
+    data-src="https://www.youtube.com/embed/VIDEO_ID"
+    width="560"
+    height="315"
+    style="display: none;"
+  ></iframe>
+</div>
+
+<script>
+function acceptMarketing() {
+  store.getState().setConsent('marketing', true);
+  store.getState().saveConsents('custom').then(() => {
+    document.getElementById('youtube-placeholder').classList.add('hidden');
+    document.getElementById('youtube-video').style.display = 'block';
+  });
+}
+</script>
+```
+
+### Example 5: Dynamic Iframe Loading
+
+```typescript
+// Add iframes dynamically after page load
+function addYouTubeVideo(videoId: string) {
+  const container = document.getElementById('video-container');
+  
+  const iframe = document.createElement('iframe');
+  iframe.setAttribute('data-category', 'marketing');
+  iframe.setAttribute('data-src', `https://www.youtube.com/embed/${videoId}`);
+  iframe.width = '560';
+  iframe.height = '315';
+  
+  container?.appendChild(iframe);
+  
+  // The iframe blocker will automatically process the new iframe
+  // If marketing consent is already granted, it will load immediately
+}
+
+// Usage
+addYouTubeVideo('dQw4w9WgXcQ');
+```
+
+See test example at `src/libs/iframe-blocker/__tests__/core.test.ts:209`
+
+## Behavior
+
+### When Consent is Granted
+
+1. The `data-src` attribute is moved to `src`
+2. The iframe loads the content
+3. The `data-src` attribute is removed
+
+### When Consent is Revoked
+
+1. The `src` attribute is cleared
+2. The original URL is preserved (if it was in `data-src`)
+3. The iframe content is unloaded
+
+### Without Category Attribute
+
+Iframes without a `data-category` attribute are not managed by the blocker and load normally.
+
+```html
+<!-- This iframe always loads -->
+<iframe src="https://example.com"></iframe>
+```
+
+See test example at `src/libs/iframe-blocker/__tests__/core.test.ts:23`
+
+## Error Handling
+
+The iframe blocker throws an error for invalid consent categories:
+
+```html
+<!-- Invalid category -->
+<iframe data-category="invalid-category" data-src="..."></iframe>
+```
+
+```typescript
+// Error: Invalid category attribute "invalid-category"
+// Valid categories: necessary, functionality, measurement, marketing, experience
+```
+
+See test example at `src/libs/iframe-blocker/__tests__/core.test.ts:123`
+
+## Cleanup
+
+The iframe blocker is automatically destroyed when needed:
+
+```typescript
+// Manual cleanup if using direct API
+const blocker = createIframeBlocker();
+
+// ... use blocker ...
+
+// Clean up
+blocker.destroy();
+```
+
+See test example at `src/libs/iframe-blocker/__tests__/core.test.ts:295`
+
+## Best Practices
+
+<Tip>
+  - Always use `data-src` instead of `src` for consent-gated iframes
+  - Use appropriate consent categories based on the iframe's purpose
+  - Provide clear UI feedback when iframes are blocked
+  - Test iframe blocking with different consent states
+</Tip>
+
+<Warning>
+  Iframes without a `data-category` attribute will always load. Make sure to add the attribute to any iframe that requires consent.
+</Warning>
+
+## Integration with Script Loader
+
+Combine iframe blocking with the script loader for comprehensive consent management:
+
+```typescript
+const store = createConsentManagerStore(manager, {
+  // Configure iframe blocking
+  iframeBlockerConfig: {
+    disableAutomaticBlocking: false,
+  },
+  
+  // Configure script loading
+  scripts: [
+    {
+      id: 'youtube-api',
+      src: 'https://www.youtube.com/iframe_api',
+      category: 'marketing',
+      onLoad: () => {
+        console.log('YouTube API loaded - iframes can now use the API');
+      },
+    },
+  ],
+});
+```
+
+Both the script loader and iframe blocker will automatically respond to consent changes.

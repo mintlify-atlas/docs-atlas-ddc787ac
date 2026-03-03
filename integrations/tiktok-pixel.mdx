@@ -1,0 +1,302 @@
+---
+title: "TikTok Pixel"
+description: "Integrate TikTok Pixel with consent grant/revoke support"
+icon: "tiktok"
+---
+
+## Overview
+
+TikTok Pixel integration for TikTok advertising and conversion tracking with built-in consent management using TikTok's grant/revoke consent API. This integration is persistent and manages consent state automatically.
+
+<Info>
+  TikTok Pixel is categorized as **marketing** by default.
+</Info>
+
+## Installation
+
+<CodeGroup>
+```bash npm
+npm install @c15t/scripts c15t
+```
+
+```bash yarn
+yarn add @c15t/scripts c15t
+```
+
+```bash pnpm
+pnpm add @c15t/scripts c15t
+```
+
+```bash bun
+bun add @c15t/scripts c15t
+```
+</CodeGroup>
+
+## Basic usage
+
+<CodeGroup>
+```typescript React
+import { loadScripts } from 'c15t';
+import { tiktokPixel } from '@c15t/scripts/tiktok-pixel';
+import { useEffect } from 'react';
+
+export function App() {
+  useEffect(() => {
+    const ttPixelScript = tiktokPixel({
+      pixelId: 'CXXXXXXXXXXXXXXXX',
+    });
+
+    loadScripts([ttPixelScript], {
+      consents: {
+        necessary: true,
+        functionality: false,
+        measurement: false,
+        marketing: true, // TikTok Pixel requires marketing consent
+        experience: false,
+      },
+    });
+  }, []);
+
+  return <div>Your app</div>;
+}
+```
+
+```typescript Next.js
+import { loadScripts } from 'c15t';
+import { tiktokPixel } from '@c15t/scripts/tiktok-pixel';
+import { useEffect } from 'react';
+
+export default function RootLayout({ children }) {
+  useEffect(() => {
+    const ttPixelScript = tiktokPixel({
+      pixelId: 'CXXXXXXXXXXXXXXXX',
+    });
+
+    loadScripts([ttPixelScript], {
+      consents: {
+        necessary: true,
+        functionality: false,
+        measurement: false,
+        marketing: true,
+        experience: false,
+      },
+    });
+  }, []);
+
+  return <html><body>{children}</body></html>;
+}
+```
+
+```typescript Vanilla JS
+import { loadScripts } from 'c15t';
+import { tiktokPixel } from '@c15t/scripts/tiktok-pixel';
+
+const ttPixelScript = tiktokPixel({
+  pixelId: 'CXXXXXXXXXXXXXXXX',
+});
+
+loadScripts([ttPixelScript], {
+  consents: {
+    necessary: true,
+    functionality: false,
+    measurement: false,
+    marketing: true,
+    experience: false,
+  },
+});
+```
+</CodeGroup>
+
+## Configuration
+
+### Options
+
+<ParamField path="pixelId" type="string" required>
+  Your TikTok Pixel ID. Usually starts with `C`.
+  
+  **Example**: `CXXXXXXXXXXXXXXXX`
+</ParamField>
+
+<ParamField path="script" type="Partial<Script>">
+  Override or extend default script values.
+  
+  **Defaults**:
+  - `id`: `'tiktok-pixel'`
+  - `category`: `'marketing'`
+  - `src`: `https://analytics.tiktok.com/i18n/pixel/events.js`
+  - `persistAfterConsentRevoked`: `true`
+</ParamField>
+
+## Tracking events
+
+Use TikTok's standard tracking API after the pixel loads:
+
+```typescript
+// Track page view (automatically tracked on load)
+window.ttq.page();
+
+// Track standard events
+window.ttq.track('AddToCart', {
+  content_id: 'product-123',
+  content_name: 'Blue T-Shirt',
+  content_type: 'product',
+  value: 29.99,
+  currency: 'USD',
+});
+
+window.ttq.track('CompletePayment', {
+  content_id: 'order-456',
+  value: 99.99,
+  currency: 'USD',
+});
+```
+
+## Standard events
+
+TikTok Pixel supports these standard events:
+
+<AccordionGroup>
+  <Accordion title="E-commerce events">
+    - `ViewContent` - Product/page view
+    - `ClickButton` - Button click
+    - `Search` - Search performed
+    - `AddToCart` - Product added to cart
+    - `InitiateCheckout` - Checkout started
+    - `AddPaymentInfo` - Payment info added
+    - `CompletePayment` - Purchase completed
+  </Accordion>
+  
+  <Accordion title="Lead generation events">
+    - `Contact` - Contact form submitted
+    - `SubmitForm` - Generic form submission
+    - `CompleteRegistration` - Account registration
+    - `Subscribe` - Newsletter/subscription
+  </Accordion>
+  
+  <Accordion title="App events">
+    - `Download` - App download
+  </Accordion>
+</AccordionGroup>
+
+## Advanced usage
+
+### E-commerce tracking
+
+Track a complete purchase flow:
+
+```typescript
+// Product page view
+window.ttq.track('ViewContent', {
+  content_id: 'product-123',
+  content_name: 'Sneakers',
+  content_type: 'product',
+  value: 89.99,
+  currency: 'USD',
+});
+
+// Add to cart
+window.ttq.track('AddToCart', {
+  content_id: 'product-123',
+  content_name: 'Sneakers',
+  quantity: 1,
+  value: 89.99,
+  currency: 'USD',
+});
+
+// Initiate checkout
+window.ttq.track('InitiateCheckout', {
+  content_id: 'product-123',
+  value: 89.99,
+  currency: 'USD',
+});
+
+// Complete payment
+window.ttq.track('CompletePayment', {
+  content_id: 'order-789',
+  value: 89.99,
+  currency: 'USD',
+});
+```
+
+### Custom properties
+
+Add custom properties to any event:
+
+```typescript
+window.ttq.track('SubmitForm', {
+  content_name: 'Contact Form',
+  // Custom properties
+  form_type: 'contact',
+  source_page: '/pricing',
+});
+```
+
+### User identification
+
+Identify users for better attribution:
+
+```typescript
+window.ttq.identify({
+  email: 'user@example.com',
+  phone_number: '+1234567890',
+  external_id: 'user-123',
+});
+```
+
+### Custom callbacks
+
+```typescript
+const ttPixelScript = tiktokPixel({
+  pixelId: 'CXXXXXXXXXXXXXXXX',
+  script: {
+    onLoad: () => {
+      console.log('TikTok Pixel loaded and consent granted');
+      window.ttq.page();
+    },
+    onDelete: () => {
+      console.log('TikTok Pixel consent revoked');
+    },
+  },
+});
+```
+
+## How it works
+
+1. **On load**: Injects TikTok Pixel loader script inline with `ttq.grantConsent()` and tracks page view
+2. **Persistent**: Script remains loaded even when consent is revoked
+3. **On delete**: Calls `ttq.revokeConsent()` to stop tracking without removing the script
+
+<Info>
+  This integration uses `persistAfterConsentRevoked: true` because TikTok Pixel has a built-in consent API. The script stays loaded but stops tracking when consent is revoked.
+</Info>
+
+## TypeScript
+
+Full TypeScript support:
+
+```typescript
+import type { Script } from 'c15t';
+import { tiktokPixel, type TikTokPixelOptions } from '@c15t/scripts/tiktok-pixel';
+
+const options: TikTokPixelOptions = {
+  pixelId: 'CXXXXXXXXXXXXXXXX',
+};
+
+const script: Script = tiktokPixel(options);
+```
+
+## Resources
+
+<CardGroup cols={2}>
+  <Card title="TikTok Pixel Guide" icon="tiktok" href="https://ads.tiktok.com/help/article/tiktok-pixel">
+    Official TikTok Pixel setup guide
+  </Card>
+  
+  <Card title="TikTok Events" icon="bolt" href="https://ads.tiktok.com/help/article/standard-events-parameters">
+    Standard events and parameters reference
+  </Card>
+  
+  <Card title="Source Code" icon="github" href="https://github.com/c15t/c15t/blob/main/packages/scripts/src/tiktok-pixel.ts">
+    View the integration source code
+  </Card>
+</CardGroup>

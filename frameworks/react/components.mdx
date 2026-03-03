@@ -1,0 +1,613 @@
+---
+title: "Components"
+description: "Complete reference for c15t React UI components. Pre-built, accessible, and fully customizable consent management components."
+icon: "puzzle-piece"
+---
+
+## Overview
+
+The c15t React package provides pre-built, GDPR-compliant UI components that work out of the box. All components are:
+
+- **Fully accessible** - WCAG 2.1 AA compliant with ARIA attributes
+- **Responsive** - Works on mobile, tablet, and desktop
+- **Customizable** - Theme props for styling without losing functionality
+- **Framework-agnostic styling** - Works with Tailwind, CSS modules, styled-components, etc.
+- **TypeScript-first** - Full type safety and IntelliSense support
+
+## ConsentManagerProvider
+
+The root provider component that initializes consent management and provides context to all child components.
+
+<ParamField path="options" type="ConsentManagerOptions" required>
+  Configuration options for the consent manager. See [Quickstart](/frameworks/react/quickstart#configuration-options) for all available options.
+</ParamField>
+
+<ParamField path="children" type="ReactNode" required>
+  React children to render within the provider.
+</ParamField>
+
+**Example:**
+
+```tsx
+import { ConsentManagerProvider } from '@c15t/react';
+
+function App() {
+  return (
+    <ConsentManagerProvider
+      options={{
+        mode: 'c15t',
+        backendURL: '/api/c15t',
+        consentCategories: ['necessary', 'analytics', 'marketing'],
+      }}
+    >
+      <YourApp />
+    </ConsentManagerProvider>
+  );
+}
+```
+
+## CookieBanner
+
+A cookie consent banner that appears on first visit or when consent is required.
+
+### Props
+
+<ParamField path="theme" type="CookieBannerTheme">
+  Custom styles to apply to the banner and its child components.
+</ParamField>
+
+<ParamField path="noStyle" type="boolean" default="false">
+  When true, removes all default styling from the component.
+</ParamField>
+
+<ParamField path="title" type="ReactNode">
+  Content to display as the banner's title. Defaults to translation value.
+</ParamField>
+
+<ParamField path="description" type="ReactNode">
+  Content to display as the banner's description. Defaults to translation value.
+</ParamField>
+
+<ParamField path="rejectButtonText" type="ReactNode">
+  Content to display on the reject button. Defaults to translation value.
+</ParamField>
+
+<ParamField path="customizeButtonText" type="ReactNode">
+  Content to display on the customize button. Defaults to translation value.
+</ParamField>
+
+<ParamField path="acceptButtonText" type="ReactNode">
+  Content to display on the accept button. Defaults to translation value.
+</ParamField>
+
+<ParamField path="scrollLock" type="boolean" default="false">
+  When true, locks page scroll while banner is open.
+</ParamField>
+
+<ParamField path="trapFocus" type="boolean" default="true">
+  When true, traps focus within the banner for accessibility.
+</ParamField>
+
+<ParamField path="disableAnimation" type="boolean" default="false">
+  When true, disables entrance/exit animations.
+</ParamField>
+
+<ParamField path="legalLinks" type="LegalLinksProps['links']">
+  Controls which legal links to display:
+  - `undefined` (default): Shows all available legal links
+  - `null`: Explicitly hides all legal links
+  - Array of keys: Shows only specified legal links (e.g., `['privacyPolicy', 'cookiePolicy']`)
+</ParamField>
+
+### Basic Usage
+
+```tsx
+import { CookieBanner } from '@c15t/react';
+
+function App() {
+  return (
+    <>
+      <YourApp />
+      <CookieBanner />
+    </>
+  );
+}
+```
+
+### Customized Usage
+
+```tsx
+import { CookieBanner } from '@c15t/react';
+
+function App() {
+  return (
+    <CookieBanner
+      title="We Value Your Privacy"
+      description="We use cookies to enhance your browsing experience and analyze our traffic."
+      acceptButtonText="Accept All Cookies"
+      rejectButtonText="Reject All"
+      customizeButtonText="Manage Preferences"
+      legalLinks={['privacyPolicy', 'cookiePolicy']}
+      theme={{
+        banner: {
+          root: 'bg-white shadow-xl',
+          card: 'p-6',
+          header: {
+            title: 'text-2xl font-bold',
+            description: 'text-gray-600 mt-2',
+          },
+          footer: {
+            'accept-button': 'bg-blue-600 hover:bg-blue-700 text-white',
+            'reject-button': 'bg-gray-200 hover:bg-gray-300',
+          },
+        },
+      }}
+    />
+  );
+}
+```
+
+### Compound Components
+
+For complete layout control, use compound components:
+
+```tsx
+import { CookieBanner } from '@c15t/react';
+
+function App() {
+  return (
+    <CookieBanner.Root>
+      <CookieBanner.Overlay />
+      <CookieBanner.Card>
+        <CookieBanner.Header>
+          <CookieBanner.Title>
+            Custom Title
+          </CookieBanner.Title>
+          <CookieBanner.Description>
+            Custom description with <a href="/privacy">privacy policy</a>.
+          </CookieBanner.Description>
+        </CookieBanner.Header>
+        <CookieBanner.Footer>
+          <CookieBanner.FooterSubGroup>
+            <CookieBanner.RejectButton />
+            <CookieBanner.AcceptButton />
+          </CookieBanner.FooterSubGroup>
+          <CookieBanner.CustomizeButton />
+        </CookieBanner.Footer>
+      </CookieBanner.Card>
+    </CookieBanner.Root>
+  );
+}
+```
+
+<Note>
+  **Next.js Server Components**: Compound components require `'use client'` directive.
+</Note>
+
+## ConsentManagerDialog
+
+A modal dialog for detailed consent management and customization.
+
+### Props
+
+<ParamField path="theme" type="ConsentManagerDialogTheme">
+  Custom styles to apply to the dialog and its child components.
+</ParamField>
+
+<ParamField path="noStyle" type="boolean" default="false">
+  When true, removes all default styling from the component.
+</ParamField>
+
+<ParamField path="open" type="boolean">
+  Controls the open state. If omitted, follows `useConsentManager().isPrivacyDialogOpen`.
+</ParamField>
+
+<ParamField path="scrollLock" type="boolean" default="true">
+  When true, locks page scroll while dialog is open.
+</ParamField>
+
+<ParamField path="trapFocus" type="boolean" default="true">
+  When true, traps focus within the dialog for accessibility.
+</ParamField>
+
+<ParamField path="disableAnimation" type="boolean" default="false">
+  When true, disables entrance/exit animations.
+</ParamField>
+
+<ParamField path="legalLinks" type="LegalLinksProps['links']">
+  Controls which legal links to display in the dialog footer.
+</ParamField>
+
+### Basic Usage
+
+```tsx
+import { ConsentManagerDialog } from '@c15t/react';
+
+function App() {
+  return (
+    <>
+      <YourApp />
+      <ConsentManagerDialog />
+    </>
+  );
+}
+```
+
+### Customized Usage
+
+```tsx
+import { ConsentManagerDialog } from '@c15t/react';
+
+function App() {
+  return (
+    <ConsentManagerDialog
+      scrollLock={true}
+      legalLinks={['privacyPolicy']}
+      theme={{
+        dialog: {
+          overlay: 'bg-black/70',
+          card: 'bg-white rounded-lg shadow-2xl max-w-4xl',
+          header: {
+            title: 'text-3xl font-bold',
+          },
+        },
+      }}
+    />
+  );
+}
+```
+
+### Compound Components
+
+```tsx
+import { ConsentManagerDialog } from '@c15t/react';
+
+function App() {
+  return (
+    <ConsentManagerDialog.Root>
+      <ConsentManagerDialog.Overlay />
+      <ConsentManagerDialog.Card>
+        <ConsentManagerDialog.Header>
+          <ConsentManagerDialog.HeaderTitle>
+            Privacy Settings
+          </ConsentManagerDialog.HeaderTitle>
+          <ConsentManagerDialog.HeaderDescription>
+            Manage your consent preferences
+          </ConsentManagerDialog.HeaderDescription>
+        </ConsentManagerDialog.Header>
+        <ConsentManagerDialog.Content>
+          <ConsentManagerDialog.ConsentCustomizationCard />
+        </ConsentManagerDialog.Content>
+      </ConsentManagerDialog.Card>
+    </ConsentManagerDialog.Root>
+  );
+}
+```
+
+## ConsentManagerWidget
+
+A standalone widget that can be embedded in settings pages or used as an alternative to the dialog.
+
+### Props
+
+<ParamField path="theme" type="ConsentManagerWidgetTheme">
+  Custom styles to apply to the widget and its child components.
+</ParamField>
+
+<ParamField path="noStyle" type="boolean" default="false">
+  When true, removes all default styling from the component.
+</ParamField>
+
+<ParamField path="hideBrading" type="boolean" default="false">
+  Controls whether to hide the branding in the widget footer.
+</ParamField>
+
+<ParamField path="legalLinks" type="LegalLinksProps['links']">
+  Controls which legal links to display in the widget footer.
+</ParamField>
+
+<ParamField path="disableAnimation" type="boolean" default="false">
+  When true, disables animations.
+</ParamField>
+
+### Basic Usage
+
+```tsx
+import { ConsentManagerWidget } from '@c15t/react';
+
+function SettingsPage() {
+  return (
+    <div>
+      <h1>Privacy Settings</h1>
+      <ConsentManagerWidget />
+    </div>
+  );
+}
+```
+
+### Customized Usage
+
+```tsx
+import { ConsentManagerWidget } from '@c15t/react';
+
+function SettingsPage() {
+  return (
+    <ConsentManagerWidget
+      hideBrading={true}
+      legalLinks={['privacyPolicy', 'cookiePolicy']}
+      theme={{
+        widget: {
+          root: 'border rounded-lg p-6',
+          accordion: {
+            item: 'border-b last:border-b-0',
+            trigger: 'py-4 hover:bg-gray-50',
+          },
+        },
+      }}
+    />
+  );
+}
+```
+
+### Compound Components
+
+```tsx
+import { ConsentManagerWidget } from '@c15t/react';
+
+function SettingsPage() {
+  return (
+    <ConsentManagerWidget.Root>
+      <ConsentManagerWidget.Accordion>
+        <ConsentManagerWidget.AccordionItems />
+      </ConsentManagerWidget.Accordion>
+      <ConsentManagerWidget.Footer>
+        <ConsentManagerWidget.FooterSubGroup>
+          <ConsentManagerWidget.RejectButton />
+          <ConsentManagerWidget.AcceptAllButton />
+        </ConsentManagerWidget.FooterSubGroup>
+        <ConsentManagerWidget.SaveButton />
+      </ConsentManagerWidget.Footer>
+    </ConsentManagerWidget.Root>
+  );
+}
+```
+
+## Frame
+
+A component that conditionally renders content based on consent. Useful for embedding third-party content like YouTube videos or maps.
+
+### Props
+
+<ParamField path="category" type="AllConsentNames" required>
+  The consent category required to render children.
+</ParamField>
+
+<ParamField path="children" type="ReactNode" required>
+  Content rendered when consent is granted. Children are not mounted until consent is given.
+</ParamField>
+
+<ParamField path="placeholder" type="ReactNode">
+  Custom placeholder component displayed when consent is not met. If not provided, a default placeholder is shown.
+</ParamField>
+
+<ParamField path="noStyle" type="boolean" default="false">
+  When true, removes all default styling.
+</ParamField>
+
+<ParamField path="theme" type="FrameTheme">
+  Custom theme to override default styles.
+</ParamField>
+
+### Basic Usage
+
+```tsx
+import { Frame } from '@c15t/react';
+
+function VideoEmbed() {
+  return (
+    <Frame category="marketing">
+      <iframe
+        src="https://www.youtube.com/embed/dQw4w9WgXcQ"
+        title="YouTube video"
+      />
+    </Frame>
+  );
+}
+```
+
+### With Custom Placeholder
+
+```tsx
+import { Frame } from '@c15t/react';
+
+function MapEmbed() {
+  return (
+    <Frame
+      category="marketing"
+      placeholder={
+        <div className="bg-gray-100 p-8 text-center rounded">
+          <p className="mb-4">This map requires marketing consent.</p>
+          <button onClick={() => openDialog()}>
+            Update Preferences
+          </button>
+        </div>
+      }
+    >
+      <iframe
+        src="https://maps.google.com/..."
+        title="Google Map"
+      />
+    </Frame>
+  );
+}
+```
+
+### Compound Components
+
+```tsx
+import { Frame } from '@c15t/react';
+
+function CustomFrame() {
+  return (
+    <Frame.Root category="analytics">
+      <Frame.Title>Analytics Dashboard</Frame.Title>
+      <div>Dashboard content...</div>
+      <Frame.Button>Update Consent</Frame.Button>
+    </Frame.Root>
+  );
+}
+```
+
+## LegalLinks
+
+Displays configurable legal document links (privacy policy, terms of service, etc.).
+
+### Props
+
+<ParamField path="links" type="LegalLinksProps['links']">
+  Controls which legal links to display:
+  - `undefined`: Shows all available links
+  - `null`: Hides all links
+  - Array of keys: Shows only specified links
+</ParamField>
+
+### Usage
+
+The `LegalLinks` component automatically reads links from the `ConsentManagerProvider` options:
+
+```tsx
+import { ConsentManagerProvider, LegalLinks } from '@c15t/react';
+
+function App() {
+  return (
+    <ConsentManagerProvider
+      options={{
+        mode: 'c15t',
+        legalLinks: {
+          privacyPolicy: { url: '/privacy', label: 'Privacy Policy' },
+          cookiePolicy: { url: '/cookies', label: 'Cookie Policy' },
+          termsOfService: { url: '/terms', label: 'Terms of Service' },
+        },
+      }}
+    >
+      <YourApp />
+      
+      {/* Shows all configured links */}
+      <LegalLinks />
+      
+      {/* Shows only privacy policy */}
+      <LegalLinks links={['privacyPolicy']} />
+      
+      {/* Hides all links */}
+      <LegalLinks links={null} />
+    </ConsentManagerProvider>
+  );
+}
+```
+
+### Inline Variant
+
+For inline display with separators:
+
+```tsx
+import { InlineLegalLinks } from '@c15t/react';
+
+function Footer() {
+  return (
+    <footer>
+      <InlineLegalLinks links={['privacyPolicy', 'cookiePolicy']} />
+    </footer>
+  );
+}
+```
+
+## Styling Components
+
+All components support multiple styling approaches:
+
+### Theme Prop
+
+Pass a `theme` object with CSS classes:
+
+```tsx
+<CookieBanner
+  theme={{
+    banner: {
+      root: 'custom-banner-root',
+      card: 'custom-banner-card',
+      header: {
+        title: 'custom-title',
+        description: 'custom-description',
+      },
+    },
+  }}
+/>
+```
+
+### Global Theme
+
+Set theme globally via the provider:
+
+```tsx
+<ConsentManagerProvider
+  options={{
+    mode: 'c15t',
+    react: {
+      theme: {
+        banner: {
+          root: 'global-banner-style',
+        },
+      },
+    },
+  }}
+>
+  {children}
+</ConsentManagerProvider>
+```
+
+### No Style Mode
+
+Remove all default styles:
+
+```tsx
+<CookieBanner noStyle />
+```
+
+Or globally:
+
+```tsx
+<ConsentManagerProvider
+  options={{
+    react: { noStyle: true },
+  }}
+>
+  {children}
+</ConsentManagerProvider>
+```
+
+## Accessibility
+
+All components are built with accessibility in mind:
+
+- **ARIA attributes** - Proper roles, labels, and states
+- **Keyboard navigation** - Full keyboard support with visible focus indicators
+- **Focus management** - Focus trapping in modals, focus restoration on close
+- **Screen reader support** - Descriptive labels and announcements
+- **Color contrast** - WCAG AA compliant color ratios
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Hooks" icon="hook" href="/frameworks/react/hooks">
+    Learn about React hooks for managing consent state.
+  </Card>
+  <Card title="API Reference" icon="palette" href="/api/react/cookie-banner">
+    Deep dive into component API and props.
+  </Card>
+  <Card title="Headless Mode" icon="code" href="/frameworks/react/headless">
+    Build completely custom UI with headless components.
+  </Card>
+  <Card title="Examples" icon="code" href="https://github.com/c15t/examples/tree/main/react">
+    Browse complete example implementations.
+  </Card>
+</CardGroup>

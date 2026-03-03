@@ -1,0 +1,362 @@
+---
+title: Consent Types
+description: Understanding the different consent categories in c15t and their GDPR classifications
+---
+
+## Overview
+
+Consent types represent different categories of data processing that require user consent under privacy regulations like GDPR. c15t provides five predefined consent types that align with standard cookie classifications.
+
+## Available Consent Types
+
+c15t defines the following consent categories:
+
+```typescript
+type AllConsentNames =
+  | 'necessary'
+  | 'functionality'
+  | 'analytics'      // Also known as 'measurement'
+  | 'marketing'
+  | 'experience';
+```
+
+## Consent Type Configurations
+
+Each consent type has a specific configuration that controls its behavior:
+
+```typescript
+type ConsentType = {
+  name: AllConsentNames;        // The consent category name
+  gdprType: number;              // GDPR category identifier (1-5)
+  defaultValue: boolean;         // Initial consent state
+  description: string;           // User-friendly explanation
+  display: boolean;              // Whether to show in consent UI
+  disabled?: boolean;            // Whether users can modify this consent
+};
+```
+
+## Predefined Consent Types
+
+### 1. Necessary (Type 1)
+
+**Essential cookies required for basic site functionality.**
+
+```typescript
+{
+  name: 'necessary',
+  gdprType: 1,
+  defaultValue: true,     // Enabled by default
+  disabled: true,         // Cannot be disabled by users
+  display: true,
+  description: 'These trackers are used for activities that are strictly necessary to operate or deliver the service you requested from us and, therefore, do not require you to consent.'
+}
+```
+
+**Use Cases:**
+- Session management
+- Authentication tokens
+- Security features
+- Shopping cart functionality
+- Load balancing
+
+**Important:** Necessary cookies are always enabled and users cannot disable them as they are essential for the website to function.
+
+---
+
+### 2. Functionality (Type 2)
+
+**Cookies that enable enhanced features and personalization.**
+
+```typescript
+{
+  name: 'functionality',
+  gdprType: 2,
+  defaultValue: false,
+  display: false,         // Hidden by default
+  description: 'These trackers enable basic interactions and functionalities that allow you to access selected features of our service and facilitate your communication with us.'
+}
+```
+
+**Use Cases:**
+- Language preferences
+- Region selection
+- Accessibility settings
+- Form auto-fill
+- Chat widget preferences
+
+---
+
+### 3. Measurement/Analytics (Type 4)
+
+**Analytics and performance measurement cookies.**
+
+```typescript
+{
+  name: 'measurement',     // Also known as 'analytics'
+  gdprType: 4,
+  defaultValue: false,
+  display: false,          // Hidden by default
+  description: 'These trackers help us to measure traffic and analyze your behavior to improve our service.'
+}
+```
+
+**Use Cases:**
+- Google Analytics
+- Page view tracking
+- User behavior analysis
+- Performance monitoring
+- A/B testing
+
+---
+
+### 4. Experience (Type 3)
+
+**Cookies that improve user experience and enable external content.**
+
+```typescript
+{
+  name: 'experience',
+  gdprType: 3,
+  defaultValue: false,
+  display: false,          // Hidden by default
+  description: 'These trackers help us to improve the quality of your user experience and enable interactions with external content, networks, and platforms.'
+}
+```
+
+**Use Cases:**
+- Video player preferences
+- Social media integration
+- Third-party content embeds
+- Interactive features
+- UI customization
+
+---
+
+### 5. Marketing (Type 5)
+
+**Advertising and marketing cookies.**
+
+```typescript
+{
+  name: 'marketing',
+  gdprType: 5,
+  defaultValue: false,
+  display: false,          // Hidden by default
+  description: 'These trackers help us to deliver personalized ads or marketing content to you, and to measure their performance.'
+}
+```
+
+**Use Cases:**
+- Google Ads
+- Facebook Pixel
+- Retargeting campaigns
+- Ad performance tracking
+- Personalized advertisements
+
+---
+
+## GDPR Type Mapping
+
+The `gdprType` field maps to standard GDPR cookie categories:
+
+| GDPR Type | Category | Consent Required | Can Be Disabled |
+|-----------|----------|------------------|------------------|
+| 1 | Essential/Necessary | No | No |
+| 2 | Functional | Yes | Yes |
+| 3 | Experience/Preferences | Yes | Yes |
+| 4 | Analytics/Measurement | Yes | Yes |
+| 5 | Marketing/Advertising | Yes | Yes |
+
+## Display vs Non-Display Consents
+
+By default, only the `necessary` consent type has `display: true`. Other consent types have `display: false`, meaning they won't appear in the consent UI unless you explicitly configure them.
+
+**Showing Additional Consent Types:**
+
+You can customize which consent types appear in your consent UI by modifying the `consentTypes` configuration:
+
+```typescript
+import { createConsentManagerStore } from '@c15t/core';
+
+const store = createConsentManagerStore(client, {
+  consentTypes: [
+    {
+      name: 'necessary',
+      gdprType: 1,
+      defaultValue: true,
+      disabled: true,
+      display: true,
+      description: 'Essential cookies for site functionality'
+    },
+    {
+      name: 'analytics',
+      gdprType: 4,
+      defaultValue: false,
+      display: true,        // Now visible in UI
+      description: 'Help us understand site usage'
+    },
+    {
+      name: 'marketing',
+      gdprType: 5,
+      defaultValue: false,
+      display: true,        // Now visible in UI
+      description: 'Personalized advertising'
+    }
+  ]
+});
+```
+
+## Working with Consent Types
+
+### Getting Displayed Consents
+
+```typescript
+const displayedConsents = store.getState().getDisplayedConsents();
+
+// Returns only consent types with display: true
+console.log(displayedConsents);
+// [{ name: 'necessary', ... }]
+```
+
+### Checking Specific Consent
+
+```typescript
+const hasMarketing = store.getState().consents.marketing;
+
+if (hasMarketing) {
+  loadMarketingPixels();
+}
+```
+
+### Using Complex Consent Conditions
+
+Use the `has()` method for advanced consent checking:
+
+```typescript
+// Check if ANY of these consents are granted
+const canTrack = store.getState().has({
+  some: ['analytics', 'marketing']
+});
+
+// Check if ALL of these consents are granted
+const hasFullConsent = store.getState().has({
+  every: ['analytics', 'marketing', 'experience']
+});
+
+// Check if NONE of these consents are granted
+const noTracking = store.getState().has({
+  none: ['analytics', 'marketing']
+});
+```
+
+## Setting Active GDPR Types
+
+You can dynamically control which consent types are active using `setGdprTypes()`:
+
+```typescript
+// Only show necessary and marketing consents
+store.getState().setGdprTypes(['necessary', 'marketing']);
+
+// Show all consent types
+store.getState().setGdprTypes([
+  'necessary',
+  'functionality',
+  'analytics',
+  'marketing',
+  'experience'
+]);
+```
+
+## Custom Consent Types
+
+While c15t provides standard consent types, you can extend the system with custom categories:
+
+```typescript
+const customConsentTypes = [
+  ...consentTypes,  // Include standard types
+  {
+    name: 'social-media',
+    gdprType: 3,
+    defaultValue: false,
+    display: true,
+    description: 'Enable social media integrations'
+  }
+];
+```
+
+**Note:** Custom consent types must be properly typed in TypeScript to maintain type safety.
+
+## Consent Type Defaults
+
+From the source code (`src/store.initial-state.ts:84`), the initial consent state is derived from consent type configurations:
+
+```typescript
+const initialConsents = consentTypes.reduce((acc, consent) => {
+  acc[consent.name] = consent.defaultValue;
+  return acc;
+}, {} as ConsentState);
+
+// Results in:
+// {
+//   necessary: true,      // Only necessary defaults to true
+//   functionality: false,
+//   measurement: false,
+//   experience: false,
+//   marketing: false
+// }
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Only show relevant consent types">
+    Only display consent types that are actually used on your website. If you don't use marketing cookies, don't show the marketing consent option.
+
+    ```typescript
+    // Only show what you use
+    setGdprTypes(['necessary', 'analytics']);
+    ```
+  </Accordion>
+
+  <Accordion title="Use clear, specific descriptions">
+    Customize consent descriptions to be specific to your use case and easy to understand.
+
+    ```typescript
+    {
+      name: 'analytics',
+      description: 'We use Google Analytics to understand which features are most popular'
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Never disable necessary consents">
+    Always keep `necessary` consent enabled and disabled for user modification, as these are essential for your site to function.
+
+    ```typescript
+    {
+      name: 'necessary',
+      defaultValue: true,
+      disabled: true  // Users cannot disable
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Group related trackers correctly">
+    Ensure you categorize scripts and trackers under the correct consent type.
+
+    ```typescript
+    // Correct categorization
+    const script = {
+      id: 'google-analytics',
+      consent: ['analytics'],  // Analytics script under analytics consent
+      src: 'https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID'
+    };
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Related Documentation
+
+- [Consent State](/concepts/consent-state) - Understanding the consent state architecture
+- [Storage](/concepts/storage) - How consent preferences are persisted
+- [Script Loader](/api-reference/script-loader) - Managing scripts based on consent

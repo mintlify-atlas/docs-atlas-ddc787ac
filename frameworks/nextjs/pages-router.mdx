@@ -1,0 +1,364 @@
+---
+title: "Pages Router"
+description: "Using c15t with Next.js Pages Router"
+---
+
+## Overview
+
+The Pages Router integration uses a higher-order function to fetch consent data server-side via `getServerSideProps`.
+
+## Installation
+
+Import from the `/pages` export path:
+
+```tsx
+import { ConsentManagerProvider } from '@c15t/nextjs/pages'
+import { withInitialC15TData } from '@c15t/nextjs/pages'
+```
+
+## Basic Setup
+
+### Step 1: Wrap Your App
+
+Add the provider in `_app.tsx`:
+
+```tsx pages/_app.tsx
+import { ConsentManagerProvider, CookieBanner } from '@c15t/nextjs/pages'
+import type { AppProps } from 'next/app'
+
+export default function App({ Component, pageProps }: AppProps) {
+  return (
+    <ConsentManagerProvider
+      options={{
+        mode: 'c15t',
+        backendURL: process.env.NEXT_PUBLIC_C15T_BACKEND_URL,
+      }}
+      initialData={pageProps.initialC15TData}
+    >
+      <Component {...pageProps} />
+      <CookieBanner />
+    </ConsentManagerProvider>
+  )
+}
+```
+
+### Step 2: Add the HOC to Pages
+
+Use `withInitialC15TData` to fetch consent data:
+
+```tsx pages/index.tsx
+import { withInitialC15TData } from '@c15t/nextjs/pages'
+
+export default function HomePage() {
+  return (
+    <div>
+      <h1>Welcome</h1>
+      {/* Your content */}
+    </div>
+  )
+}
+
+export const getServerSideProps = withInitialC15TData(
+  process.env.NEXT_PUBLIC_C15T_BACKEND_URL!
+)
+```
+
+## Using with Existing getServerSideProps
+
+Wrap your existing function:
+
+```tsx pages/dashboard.tsx
+import { withInitialC15TData } from '@c15t/nextjs/pages'
+import type { GetServerSideProps } from 'next'
+
+interface DashboardProps {
+  user: { name: string }
+}
+
+export default function Dashboard({ user }: DashboardProps) {
+  return <div>Welcome, {user.name}</div>
+}
+
+const getServerSideProps: GetServerSideProps<DashboardProps> = async (context) => {
+  // Your existing logic
+  const user = { name: 'John Doe' }
+  
+  return {
+    props: { user },
+  }
+}
+
+export const wrappedGetServerSideProps = withInitialC15TData(
+  process.env.NEXT_PUBLIC_C15T_BACKEND_URL!,
+  getServerSideProps
+)
+
+export { wrappedGetServerSideProps as getServerSideProps }
+```
+
+The HOC merges the consent data with your existing props:
+
+```tsx /home/daytona/workspace/source/packages/nextjs/src/components/consent-manager-provider/initial-data-hoc.tsx
+if (getServerSideProps) {
+  const result = await getServerSideProps(context);
+
+  if ('props' in result) {
+    return {
+      ...result,
+      props: {
+        ...(await result.props),
+        initialC15TData: initialData ?? null,
+      },
+    };
+  }
+
+  return result;
+}
+```
+
+## Type Signature
+
+The HOC type definition:
+
+```tsx /home/daytona/workspace/source/packages/nextjs/src/components/consent-manager-provider/initial-data-hoc.tsx
+export function withInitialC15TData<
+  Props extends Record<string, unknown> = Record<string, never>,
+>(
+  backendURL: string,
+  getServerSideProps?: GetServerSideProps<Props>,
+  overrides?: Overrides
+): GetServerSideProps<Props & WithInitialC15TDataProps>
+```
+
+## Location Overrides
+
+Pass overrides to the HOC:
+
+```tsx pages/index.tsx
+import { withInitialC15TData } from '@c15t/nextjs/pages'
+
+export default function HomePage() {
+  return <div>Content</div>
+}
+
+export const getServerSideProps = withInitialC15TData(
+  process.env.NEXT_PUBLIC_C15T_BACKEND_URL!,
+  undefined,
+  {
+    country: 'GB',
+    language: 'en-GB',
+  }
+)
+```
+
+## Provider Props
+
+The Pages Router provider accepts conditional props:
+
+```tsx /home/daytona/workspace/source/packages/nextjs/src/components/consent-manager-provider/pages.tsx
+type C15tModeProps = BaseProviderProps & {
+  options: Omit<ConsentManagerProviderProps['options'], 'overrides'> & {
+    mode?: 'c15t' | undefined;
+  };
+  initialData: InitialDataPromise;
+};
+
+type OtherModeProps = BaseProviderProps & {
+  options: ConsentManagerProviderProps['options'] & {
+    mode: 'offline' | 'custom';
+  };
+  initialData?: never;
+};
+
+type SharedProviderProps = C15tModeProps | OtherModeProps;
+```
+
+### c15t Mode
+
+Requires `initialData`:
+
+```tsx
+<ConsentManagerProvider
+  options={{
+    mode: 'c15t',
+    backendURL: process.env.NEXT_PUBLIC_C15T_BACKEND_URL,
+  }}
+  initialData={pageProps.initialC15TData}
+>
+  {children}
+</ConsentManagerProvider>
+```
+
+### Offline Mode
+
+Does not need `initialData`:
+
+```tsx
+<ConsentManagerProvider
+  options={{
+    mode: 'offline',
+  }}
+>
+  {children}
+</ConsentManagerProvider>
+```
+
+## Components
+
+All standard components work in Pages Router:
+
+### Cookie Banner
+
+```tsx pages/_app.tsx
+import { CookieBanner } from '@c15t/nextjs/pages'
+
+export default function App({ Component, pageProps }) {
+  return (
+    <ConsentManagerProvider
+      options={{ mode: 'c15t', backendURL: '...' }}
+      initialData={pageProps.initialC15TData}
+    >
+      <Component {...pageProps} />
+      <CookieBanner />
+    </ConsentManagerProvider>
+  )
+}
+```
+
+### Consent Dialog
+
+```tsx pages/settings.tsx
+import { ConsentManagerDialog } from '@c15t/nextjs/pages'
+
+export default function SettingsPage() {
+  return (
+    <div>
+      <h1>Privacy Settings</h1>
+      <ConsentManagerDialog />
+    </div>
+  )
+}
+```
+
+## Using Hooks
+
+Access consent state:
+
+```tsx pages/analytics.tsx
+import { useConsentManager } from '@c15t/nextjs/pages'
+import { useEffect } from 'react'
+
+export default function AnalyticsPage() {
+  const { consent, openConsentManager } = useConsentManager()
+
+  useEffect(() => {
+    if (consent?.analytics) {
+      // Initialize analytics
+    }
+  }, [consent?.analytics])
+
+  return (
+    <div>
+      <button onClick={openConsentManager}>
+        Manage Preferences
+      </button>
+    </div>
+  )
+}
+```
+
+## Callbacks and Scripts
+
+The Pages Router provider supports callbacks and scripts directly in options:
+
+```tsx pages/_app.tsx
+import { ConsentManagerProvider } from '@c15t/nextjs/pages'
+
+export default function App({ Component, pageProps }) {
+  return (
+    <ConsentManagerProvider
+      options={{
+        mode: 'c15t',
+        backendURL: process.env.NEXT_PUBLIC_C15T_BACKEND_URL,
+        callbacks: {
+          onConsentChange: (consent) => {
+            console.log('Consent updated:', consent)
+          },
+        },
+        scripts: [
+          {
+            id: 'google-analytics',
+            src: 'https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID',
+            category: 'analytics',
+          },
+        ],
+      }}
+      initialData={pageProps.initialC15TData}
+    >
+      <Component {...pageProps} />
+    </ConsentManagerProvider>
+  )
+}
+```
+
+<Note>
+  Unlike App Router, the Pages Router provider accepts `callbacks` and `scripts` directly in the `options` prop.
+</Note>
+
+## Error Handling
+
+The HOC silently handles fetch errors:
+
+```tsx /home/daytona/workspace/source/packages/nextjs/src/components/consent-manager-provider/initial-data-hoc.tsx
+try {
+  initialData = await getC15TInitialData(
+    backendURL,
+    new Headers(context.req.headers as Record<string, string>),
+    overrides
+  );
+} catch (error) {
+  console.warn('Failed to fetch initial c15t data:', error);
+}
+```
+
+The app continues to work even if consent data fetch fails.
+
+## Headless Mode
+
+For custom UI, import from `/pages/headless`:
+
+```tsx
+import { ConsentManagerProvider } from '@c15t/nextjs/pages/headless'
+import { withInitialC15TData } from '@c15t/nextjs/pages/headless'
+```
+
+This provides the provider without pre-built UI components.
+
+## Metadata Configuration
+
+The provider sets metadata for tracking:
+
+```tsx /home/daytona/workspace/source/packages/nextjs/src/components/consent-manager-provider/utils/enrich-options.ts
+const baseStoreConfig = {
+  ...options.store,
+  config: {
+    pkg: '@c15t/nextjs',
+    version,
+    mode: options.mode || 'Unknown',
+    meta: {
+      appDirectory: false,
+    },
+  },
+};
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="App Router" icon="route" href="/frameworks/nextjs/app-router">
+    Migrate to App Router
+  </Card>
+  <Card title="Customization" icon="palette">
+    Customize the UI
+  </Card>
+</CardGroup>

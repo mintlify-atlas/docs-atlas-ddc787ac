@@ -1,0 +1,292 @@
+---
+title: Consent State
+description: Understanding the consent state architecture and lifecycle in c15t
+---
+
+## Overview
+
+The consent state is the core data structure that tracks user consent decisions across all consent categories. c15t manages this state through a centralized store that handles consent persistence, validation, and synchronization.
+
+## Consent State Structure
+
+The consent state is represented as a `ConsentState` type, which maps each consent category to a boolean value:
+
+```typescript
+type ConsentState = Record<AllConsentNames, boolean>;
+
+// Example consent state
+const consentState: ConsentState = {
+  necessary: true,    // Required functionality
+  functional: true,   // Enhanced features
+  analytics: false,   // Usage tracking
+  marketing: false,   // Marketing cookies
+  experience: false   // User experience improvements
+};
+```
+
+## State Properties
+
+The privacy consent store maintains several state properties:
+
+### Core Consent State
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `consents` | `ConsentState` | Current saved consent states for all categories |
+| `selectedConsents` | `ConsentState` | Selected consents (not yet saved) - use `saveConsents()` to persist |
+| `consentInfo` | `ConsentInfo \| null` | Metadata about when and how consent was given |
+
+### UI State
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `showPopup` | `boolean` | Whether to display the consent banner |
+| `isPrivacyDialogOpen` | `boolean` | Whether the privacy settings dialog is open |
+| `isLoadingConsentInfo` | `boolean` | Loading state for consent banner information |
+| `hasFetchedBanner` | `boolean` | Whether consent banner data has been fetched |
+
+### Configuration State
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `gdprTypes` | `AllConsentNames[]` | Active GDPR consent categories |
+| `consentTypes` | `ConsentType[]` | Available consent type configurations |
+| `includeNonDisplayedConsents` | `boolean` | Whether to include hidden consents in operations |
+
+## Consent Info Metadata
+
+The `ConsentInfo` type tracks metadata about the consent decision:
+
+```typescript
+type ConsentInfo = {
+  time: number;         // Unix timestamp when consent was recorded
+  id?: string;          // Optional consent record ID
+  identified?: boolean; // Whether consent is linked to an authenticated user
+};
+```
+
+**Example:**
+
+```typescript
+const consentInfo: ConsentInfo = {
+  time: 1761911048,      // March 3, 2026
+  id: "consent_abc123",
+  identified: true
+};
+```
+
+## State Lifecycle
+
+### 1. Initialization
+
+When the consent manager initializes, it:
+
+1. Loads saved consent state from storage (cookies/localStorage)
+2. Applies default values for any missing consent types
+3. Sets up the store with initial configuration
+
+```typescript
+// Initial state from source: src/store.initial-state.ts
+const initialConsents = {
+  necessary: true,    // Only necessary is true by default
+  functionality: false,
+  measurement: false,
+  experience: false,
+  marketing: false
+};
+```
+
+### 2. User Interaction
+
+Users can modify consent through several methods:
+
+**Updating Selected Consents (Not Saved)**
+
+```typescript
+// Update selected state without saving
+store.getState().setSelectedConsent('analytics', true);
+```
+
+**Saving Consent Decisions**
+
+```typescript
+// Save all consents (accept all)
+store.getState().saveConsents('all');
+
+// Save custom selections
+store.getState().saveConsents('custom');
+
+// Save only necessary consents (reject all)
+store.getState().saveConsents('necessary');
+```
+
+**Direct Consent Update (Auto-save)**
+
+```typescript
+// Set and automatically save a consent
+store.getState().setConsent('marketing', true);
+```
+
+### 3. Persistence
+
+When consents are saved, c15t:
+
+1. Updates the `consents` state property
+2. Creates/updates `consentInfo` with current timestamp
+3. Persists to both localStorage and cookies
+4. Triggers registered callbacks
+5. Updates script loading based on new consent state
+
+### 4. Validation
+
+The consent manager validates state through several methods:
+
+```typescript
+// Check if user has consented to anything
+const hasConsented = store.getState().hasConsented();
+
+// Check specific consent (deprecated, use has() instead)
+const hasAnalytics = store.getState().hasConsentFor('analytics');
+
+// Check complex conditions
+const canTrack = store.getState().has({
+  some: ['analytics', 'marketing']
+});
+```
+
+## State Normalization
+
+All consent values are explicitly normalized to booleans to ensure consistency:
+
+- Missing consent types default to `false`
+- All consent keys are explicitly defined (no undefined values)
+- Custom consent types are preserved when present
+
+```typescript
+// From source: src/libs/cookie/storage.ts:138
+function normalizeConsentData(data) {
+  const consents = data.consents || {};
+  const normalized = { ...consents };
+  
+  // Ensure all known consent types have explicit boolean values
+  for (const consentName of allConsentNames) {
+    normalized[consentName] = consents[consentName] ?? false;
+  }
+  
+  return { ...data, consents: normalized };
+}
+```
+
+## Working with Consent State
+
+### Reading Current State
+
+```typescript
+import { useConsentManager } from '@c15t/react';
+
+function MyComponent() {
+  const { consents, hasConsented } = useConsentManager();
+  
+  return (
+    <div>
+      <p>Analytics: {consents.analytics ? 'Enabled' : 'Disabled'}</p>
+      <p>Has consented: {hasConsented() ? 'Yes' : 'No'}</p>
+    </div>
+  );
+}
+```
+
+### Subscribing to State Changes
+
+```typescript
+import { store } from './consent-store';
+
+// Subscribe to all state changes
+const unsubscribe = store.subscribe((state) => {
+  console.log('Consent state updated:', state.consents);
+});
+
+// Subscribe to specific consent changes
+store.subscribe((state) => {
+  if (state.consents.analytics) {
+    initializeAnalytics();
+  }
+});
+
+// Clean up
+unsubscribe();
+```
+
+### Resetting State
+
+```typescript
+// Reset all consents to default values
+store.getState().resetConsents();
+```
+
+## State Synchronization
+
+The consent state is automatically synchronized:
+
+- **Between storage mechanisms**: Changes in cookies sync to localStorage and vice versa
+- **Across subdomains**: When `crossSubdomain` is enabled
+- **With backend**: When using c15t's hosted consent service
+- **With external systems**: Through registered callbacks
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Always check consent before tracking">
+    Never assume consent. Always check the current state before initializing tracking services.
+
+    ```typescript
+    if (store.getState().has({ some: ['analytics', 'marketing'] })) {
+      initializeTracking();
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Use selectedConsents for preview">
+    Use `selectedConsents` to show users what they're about to save without persisting immediately.
+
+    ```typescript
+    // Show preview
+    const { selectedConsents } = store.getState();
+    console.log('You are about to save:', selectedConsents);
+    
+    // Then save when user confirms
+    store.getState().saveConsents('custom');
+    ```
+  </Accordion>
+
+  <Accordion title="Subscribe to state changes">
+    Subscribe to consent changes to react to user decisions in real-time.
+
+    ```typescript
+    store.subscribe((state) => {
+      if (state.consents.marketing && !wasMarketingEnabled) {
+        loadMarketingScripts();
+      }
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="Handle missing consent gracefully">
+    Always provide fallback behavior when consent is not granted.
+
+    ```typescript
+    if (consents.analytics) {
+      trackPageView();
+    } else {
+      // Graceful degradation - no tracking
+      console.log('Analytics disabled by user');
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Related Documentation
+
+- [Consent Types](/concepts/consent-types) - Learn about available consent categories
+- [Storage](/concepts/storage) - Understand how consent state is persisted
+- [Compliance Regions](/concepts/compliance-regions) - Region-specific consent requirements

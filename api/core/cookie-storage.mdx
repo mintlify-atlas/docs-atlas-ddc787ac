@@ -1,0 +1,369 @@
+---
+title: Cookie Storage
+description: Consent data persistence utilities for localStorage and cookies
+---
+
+## Overview
+
+The Cookie Storage module provides dual-storage functionality for consent data, persisting to both localStorage and cookies for maximum reliability across different scenarios.
+
+## Functions
+
+### saveConsentToStorage
+
+Saves consent data to both localStorage and cookie.
+
+```typescript
+function saveConsentToStorage(
+  data: {
+    consents: Partial<ConsentState>;
+    consentInfo: ConsentInfo;
+  },
+  options?: CookieOptions,
+  config?: StorageConfig
+): void
+```
+
+<ParamField path="data" type="object" required>
+  Consent data to save.
+  
+  <Expandable title="properties">
+    <ParamField path="consents" type="Partial<ConsentState>" required>
+      Consent state mapping consent type names to boolean values.
+    </ParamField>
+    <ParamField path="consentInfo" type="ConsentInfo" required>
+      Information about when and how consent was given.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="options" type="CookieOptions">
+  Cookie configuration options.
+  
+  <Expandable title="CookieOptions properties">
+    <ParamField path="expiryDays" type="number" default="365">
+      Cookie expiration in days.
+    </ParamField>
+    <ParamField path="crossSubdomain" type="boolean" default="false">
+      Enable cross-subdomain cookies. Automatically uses root domain when true.
+    </ParamField>
+    <ParamField path="domain" type="string">
+      Cookie domain. Takes precedence over crossSubdomain if set.
+      - Empty/undefined: Current domain only (most secure)
+      - `.example.com`: All subdomains
+      - `example.com`: Exact domain match
+    </ParamField>
+    <ParamField path="path" type="string" default="/">
+      Cookie path.
+    </ParamField>
+    <ParamField path="secure" type="boolean" default="true in production">
+      Whether the cookie should be secure (HTTPS only).
+    </ParamField>
+    <ParamField path="sameSite" type="'Strict' | 'Lax' | 'None'" default="'Lax'">
+      SameSite attribute for the cookie.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="config" type="StorageConfig">
+  Storage configuration.
+  
+  <Expandable title="StorageConfig properties">
+    <ParamField path="storageKey" type="string" default="c15t">
+      Custom storage key for localStorage and cookies.
+    </ParamField>
+    <ParamField path="crossSubdomain" type="boolean" default="false">
+      Enable cross-subdomain cookies by default.
+    </ParamField>
+    <ParamField path="defaultDomain" type="string">
+      Custom default domain for cookies. Overrides crossSubdomain if set.
+    </ParamField>
+    <ParamField path="defaultExpiryDays" type="number" default="365">
+      Default cookie expiration in days.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+**Example:**
+
+```typescript
+import { saveConsentToStorage } from '@c15t/core';
+
+saveConsentToStorage({
+  consents: { 
+    necessary: true, 
+    measurement: true,
+    marketing: false 
+  },
+  consentInfo: { 
+    time: Date.now(), 
+    type: 'custom' 
+  }
+});
+
+// With cross-subdomain support
+saveConsentToStorage(
+  {
+    consents: { necessary: true, measurement: true },
+    consentInfo: { time: Date.now(), type: 'custom' }
+  },
+  { crossSubdomain: true }
+);
+
+// With custom storage key
+saveConsentToStorage(
+  {
+    consents: { necessary: true },
+    consentInfo: { time: Date.now(), type: 'necessary' }
+  },
+  undefined,
+  { storageKey: 'my-consent' }
+);
+```
+
+### getConsentFromStorage
+
+Retrieves consent data from localStorage or cookie (with fallback).
+
+```typescript
+function getConsentFromStorage<T = unknown>(
+  config?: StorageConfig
+): T | null
+```
+
+<ParamField path="config" type="StorageConfig">
+  Storage configuration.
+</ParamField>
+
+<ResponseField name="return" type="T | null">
+  Consent data or null if not found. All consent values are guaranteed to be explicit booleans (missing keys default to `false`).
+</ResponseField>
+
+**Priority order:**
+1. Cookie (if exists) - more reliable for cross-subdomain
+2. localStorage (fallback) - for single-domain scenarios
+
+**Features:**
+- Automatic migration from legacy storage keys
+- Prioritizes cookies for better cross-subdomain support
+- Syncs between storage locations
+- Normalizes consent data (missing keys default to `false`)
+
+**Example:**
+
+```typescript
+import { getConsentFromStorage } from '@c15t/core';
+
+const consent = getConsentFromStorage();
+if (consent) {
+  console.log('Consent state:', consent.consents);
+  console.log('Consent info:', consent.consentInfo);
+  
+  // All consent values are explicit booleans
+  console.log('Analytics consent:', consent.consents.measurement); // true or false, never undefined
+}
+
+// With custom storage key
+const customConsent = getConsentFromStorage({ storageKey: 'my-consent' });
+```
+
+### deleteConsentFromStorage
+
+Deletes consent data from both localStorage and cookie.
+
+```typescript
+function deleteConsentFromStorage(
+  options?: CookieOptions,
+  config?: StorageConfig
+): void
+```
+
+<ParamField path="options" type="CookieOptions">
+  Cookie configuration options (domain and path should match the original cookie).
+</ParamField>
+
+<ParamField path="config" type="StorageConfig">
+  Storage configuration.
+</ParamField>
+
+**Example:**
+
+```typescript
+import { deleteConsentFromStorage } from '@c15t/core';
+
+// Delete consent
+deleteConsentFromStorage();
+
+// Delete with cross-subdomain support
+deleteConsentFromStorage({ crossSubdomain: true });
+
+// Delete with custom storage key
+deleteConsentFromStorage(undefined, { storageKey: 'my-consent' });
+```
+
+## Low-Level Cookie Operations
+
+### setCookie
+
+Sets a cookie with the specified name, value, and options.
+
+```typescript
+function setCookie(
+  name: string,
+  value: unknown,
+  options?: CookieOptions,
+  config?: StorageConfig
+): void
+```
+
+<ParamField path="name" type="string" required>
+  Cookie name.
+</ParamField>
+
+<ParamField path="value" type="unknown" required>
+  Cookie value (will be flattened to compact string format).
+</ParamField>
+
+<ParamField path="options" type="CookieOptions">
+  Cookie configuration options.
+</ParamField>
+
+<ParamField path="config" type="StorageConfig">
+  Storage configuration.
+</ParamField>
+
+**Example:**
+
+```typescript
+import { setCookie } from '@c15t/core';
+
+setCookie('my-cookie', { foo: 'bar', baz: 123 });
+
+// With options
+setCookie(
+  'my-cookie',
+  { foo: 'bar' },
+  { expiryDays: 30, secure: true, sameSite: 'Strict' }
+);
+```
+
+### getCookie
+
+Retrieves a cookie value by name.
+
+```typescript
+function getCookie<T = unknown>(name: string): T | null
+```
+
+<ParamField path="name" type="string" required>
+  Cookie name to retrieve.
+</ParamField>
+
+<ResponseField name="return" type="T | null">
+  Parsed cookie value or null if not found.
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { getCookie } from '@c15t/core';
+
+const value = getCookie('my-cookie');
+if (value) {
+  console.log('Cookie value:', value);
+}
+```
+
+### deleteCookie
+
+Deletes a cookie by name.
+
+```typescript
+function deleteCookie(
+  name: string,
+  options?: CookieOptions,
+  config?: StorageConfig
+): void
+```
+
+<ParamField path="name" type="string" required>
+  Cookie name to delete.
+</ParamField>
+
+<ParamField path="options" type="CookieOptions">
+  Cookie configuration options (domain and path should match the original cookie).
+</ParamField>
+
+<ParamField path="config" type="StorageConfig">
+  Storage configuration.
+</ParamField>
+
+**Example:**
+
+```typescript
+import { deleteCookie } from '@c15t/core';
+
+deleteCookie('my-cookie');
+
+// With domain
+deleteCookie('my-cookie', { domain: '.example.com' });
+```
+
+## Utility Functions
+
+### getRootDomain
+
+Gets the root domain for cross-subdomain cookies.
+
+```typescript
+function getRootDomain(): string
+```
+
+<ResponseField name="return" type="string">
+  The root domain (e.g., '.example.com') or empty string for localhost.
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { getRootDomain } from '@c15t/core';
+
+const domain = getRootDomain();
+console.log('Root domain:', domain); // '.example.com'
+```
+
+## Implementation Details
+
+### Dual Storage Strategy
+
+The module uses a dual-storage approach:
+
+1. **Cookie Storage**: Primary storage for cross-subdomain support
+   - Works across all subdomains when `crossSubdomain: true`
+   - More reliable for cross-domain scenarios
+   - Limited size (4KB after compression)
+
+2. **localStorage**: Fallback and sync target
+   - Domain-specific storage
+   - Larger storage capacity
+   - Synced from cookies when available
+
+### Cookie Optimization
+
+Cookies use a compact format to minimize size:
+- Key compression (e.g., `consents.necessary` → `c.n`)
+- Flat key:value format without JSON special characters
+- Omits `false` values (defaults to `false` when reading)
+
+### Migration
+
+Automatic migration from legacy storage keys:
+- Old key: `privacy-consent-storage` (v1.7.x)
+- New key: `c15t` (v1.8+)
+- Migration happens transparently on first read
+
+## Related
+
+- [createConsentManagerStore](/api/core/create-consent-store) - Configure storage in store
+- [PrivacyConsentState](/api/core/consent-state) - Store uses storage utilities
+- [Types](/api/core/types) - Type definitions

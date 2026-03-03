@@ -1,0 +1,411 @@
+---
+title: 'Database Adapters'
+description: 'Database adapter interfaces for connecting c15t with various ORMs'
+icon: 'database'
+---
+
+## Overview
+
+Database adapters provide a unified interface for c15t to work with different database technologies and ORMs. All adapters are powered by [FumaDB](https://fumadb.com), which provides a type-safe abstraction layer.
+
+<Info>
+c15t supports multiple database adapters out of the box, making it easy to integrate with your existing database setup.
+</Info>
+
+## Available Adapters
+
+### Kysely
+
+Adapter for [Kysely](https://kysely.dev/) - a type-safe SQL query builder.
+
+#### Import
+
+```typescript
+import { kyselyAdapter } from '@c15t/backend/adapters/kysely';
+```
+
+#### Usage
+
+```typescript
+import { Kysely, PostgresDialect } from 'kysely';
+import { Pool } from 'pg';
+import { kyselyAdapter } from '@c15t/backend/adapters/kysely';
+import { c15tInstance } from '@c15t/backend';
+
+// Create Kysely instance
+const db = new Kysely({
+  dialect: new PostgresDialect({
+    pool: new Pool({
+      host: 'localhost',
+      database: 'consent_db',
+    }),
+  }),
+});
+
+// Create c15t instance with Kysely adapter
+const instance = c15tInstance({
+  adapter: kyselyAdapter(db),
+  trustedOrigins: ['https://example.com'],
+});
+```
+
+#### Supported Databases
+
+- PostgreSQL
+- MySQL
+- SQLite
+- MS SQL Server
+
+### Drizzle
+
+Adapter for [Drizzle ORM](https://orm.drizzle.team/) - a TypeScript ORM.
+
+#### Import
+
+```typescript
+import { drizzleAdapter } from '@c15t/backend/adapters/drizzle';
+```
+
+#### Usage
+
+```typescript
+import { drizzle } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
+import { drizzleAdapter } from '@c15t/backend/adapters/drizzle';
+import { c15tInstance } from '@c15t/backend';
+
+// Create Drizzle instance
+const client = postgres('postgresql://user:password@localhost:5432/consent_db');
+const db = drizzle(client);
+
+// Create c15t instance with Drizzle adapter
+const instance = c15tInstance({
+  adapter: drizzleAdapter(db),
+  trustedOrigins: ['https://example.com'],
+});
+```
+
+#### Supported Databases
+
+- PostgreSQL
+- MySQL
+- SQLite
+
+### Prisma
+
+Adapter for [Prisma](https://www.prisma.io/) - a next-generation ORM.
+
+#### Import
+
+```typescript
+import { prismaAdapter } from '@c15t/backend/adapters/prisma';
+```
+
+#### Usage
+
+```typescript
+import { PrismaClient } from '@prisma/client';
+import { prismaAdapter } from '@c15t/backend/adapters/prisma';
+import { c15tInstance } from '@c15t/backend';
+
+// Create Prisma client
+const prisma = new PrismaClient();
+
+// Create c15t instance with Prisma adapter
+const instance = c15tInstance({
+  adapter: prismaAdapter(prisma),
+  trustedOrigins: ['https://example.com'],
+});
+```
+
+#### Supported Databases
+
+- PostgreSQL
+- MySQL
+- SQLite
+- MongoDB (via Prisma's MongoDB connector)
+- CockroachDB
+- Microsoft SQL Server
+
+### TypeORM
+
+Adapter for [TypeORM](https://typeorm.io/) - an ORM for TypeScript and JavaScript.
+
+#### Import
+
+```typescript
+import { typeormAdapter } from '@c15t/backend/adapters/typeorm';
+```
+
+#### Usage
+
+```typescript
+import { DataSource } from 'typeorm';
+import { typeormAdapter } from '@c15t/backend/adapters/typeorm';
+import { c15tInstance } from '@c15t/backend';
+
+// Create TypeORM data source
+const dataSource = new DataSource({
+  type: 'postgres',
+  host: 'localhost',
+  port: 5432,
+  username: 'user',
+  password: 'password',
+  database: 'consent_db',
+  entities: [],
+  synchronize: false,
+});
+
+await dataSource.initialize();
+
+// Create c15t instance with TypeORM adapter
+const instance = c15tInstance({
+  adapter: typeormAdapter(dataSource),
+  trustedOrigins: ['https://example.com'],
+});
+```
+
+#### Supported Databases
+
+- PostgreSQL
+- MySQL
+- MariaDB
+- SQLite
+- Microsoft SQL Server
+- Oracle
+- CockroachDB
+
+### MongoDB
+
+Adapter for [MongoDB](https://www.mongodb.com/) - a NoSQL database.
+
+#### Import
+
+```typescript
+import { mongoAdapter } from '@c15t/backend/adapters/mongo';
+```
+
+#### Usage
+
+```typescript
+import { MongoClient } from 'mongodb';
+import { mongoAdapter } from '@c15t/backend/adapters/mongo';
+import { c15tInstance } from '@c15t/backend';
+
+// Create MongoDB client
+const client = new MongoClient('mongodb://localhost:27017');
+await client.connect();
+const db = client.db('consent_db');
+
+// Create c15t instance with MongoDB adapter
+const instance = c15tInstance({
+  adapter: mongoAdapter(db),
+  trustedOrigins: ['https://example.com'],
+});
+```
+
+## Adapter Interface
+
+All adapters implement the FumaDB adapter interface:
+
+```typescript
+interface DatabaseAdapter {
+  // Database connection
+  connect(): Promise<void>;
+  disconnect(): Promise<void>;
+  
+  // Query operations
+  findOne<T>(table: string, query: object): Promise<T | null>;
+  findMany<T>(table: string, query: object): Promise<T[]>;
+  insert<T>(table: string, data: object): Promise<T>;
+  update<T>(table: string, query: object, data: object): Promise<T>;
+  delete(table: string, query: object): Promise<void>;
+  
+  // Transaction support
+  transaction<T>(callback: () => Promise<T>): Promise<T>;
+}
+```
+
+## Schema Management
+
+C15t uses versioned schemas to manage database structure:
+
+### Schema Version 1.0.0
+
+The current schema includes the following tables:
+
+- `c15t_subjects` - User/subject records
+- `c15t_domains` - Domain configurations
+- `c15t_consent_policies` - Consent policy definitions
+- `c15t_consent_purposes` - Consent purpose definitions
+- `c15t_consents` - Consent records
+- `c15t_consent_records` - Historical consent records
+- `c15t_audit_logs` - Audit trail
+
+### Migration
+
+C15t automatically handles schema migrations when you initialize an instance:
+
+```typescript
+const instance = c15tInstance({
+  adapter: kyselyAdapter(db),
+  trustedOrigins: ['*'],
+});
+
+// Migrations run automatically on first request
+// or you can trigger them manually:
+const context = await instance.$context;
+await context.db.migrate();
+```
+
+## Connection Pooling
+
+For production deployments, configure connection pooling:
+
+### PostgreSQL with Kysely
+
+```typescript
+import { Pool } from 'pg';
+import { Kysely, PostgresDialect } from 'kysely';
+
+const pool = new Pool({
+  host: process.env.DB_HOST,
+  database: process.env.DB_NAME,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  max: 20, // Maximum pool size
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+});
+
+const db = new Kysely({
+  dialect: new PostgresDialect({ pool }),
+});
+```
+
+### MongoDB
+
+```typescript
+import { MongoClient } from 'mongodb';
+
+const client = new MongoClient(process.env.MONGODB_URI, {
+  maxPoolSize: 50,
+  minPoolSize: 10,
+  maxIdleTimeMS: 30000,
+  serverSelectionTimeoutMS: 5000,
+});
+```
+
+## Transaction Support
+
+All adapters support transactions for atomic operations:
+
+```typescript
+const context = await instance.$context;
+
+await context.db.transaction(async (trx) => {
+  // Create subject
+  const subject = await trx.subjects.create({
+    externalId: 'user-123',
+  });
+  
+  // Create consent
+  await trx.consents.create({
+    subjectId: subject.id,
+    domainId: 'domain-1',
+    policyId: 'policy-1',
+    status: 'given',
+  });
+  
+  // Both operations succeed or fail together
+});
+```
+
+## Performance Considerations
+
+<CardGroup cols={2}>
+  <Card title="Index Strategy" icon="bolt">
+    Ensure proper indexes on frequently queried columns (subjectId, domainId, timestamps).
+  </Card>
+  
+  <Card title="Connection Pooling" icon="layer-group">
+    Configure appropriate pool sizes based on your application's concurrency needs.
+  </Card>
+  
+  <Card title="Query Optimization" icon="gauge-high">
+    Use FumaDB's query builder for efficient, type-safe queries.
+  </Card>
+  
+  <Card title="Batch Operations" icon="list">
+    Use batch inserts for bulk consent records to improve performance.
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+### Connection Errors
+
+```typescript
+try {
+  const instance = c15tInstance({
+    adapter: kyselyAdapter(db),
+    trustedOrigins: ['*'],
+  });
+  
+  // Test connection
+  const context = await instance.$context;
+  await context.db.health();
+} catch (error) {
+  console.error('Database connection failed:', error);
+  // Handle connection error
+}
+```
+
+### Migration Errors
+
+```typescript
+import { c15tInstance } from '@c15t/backend';
+
+const instance = c15tInstance({
+  adapter: kyselyAdapter(db),
+  trustedOrigins: ['*'],
+  logger: {
+    level: 'debug', // Enable detailed logging
+  },
+});
+
+// Check migration status
+const context = await instance.$context;
+const migrations = await context.db.getMigrations();
+console.log('Applied migrations:', migrations);
+```
+
+## Best Practices
+
+<Steps>
+  <Step title="Choose the Right Adapter">
+    Select an adapter that matches your existing database setup and ORM.
+  </Step>
+  
+  <Step title="Configure Connection Pooling">
+    Set appropriate pool sizes for your application's load.
+  </Step>
+  
+  <Step title="Enable Logging in Development">
+    Use debug logging to understand query patterns and performance.
+  </Step>
+  
+  <Step title="Test Migrations">
+    Always test database migrations in a staging environment first.
+  </Step>
+  
+  <Step title="Monitor Performance">
+    Use database monitoring tools to track query performance and optimize indexes.
+  </Step>
+</Steps>
+
+## Related
+
+- [Core API](/api/backend/core)
+- [Router](/api/backend/router)
+- [Database Schema Guide](/guides/database-schema)

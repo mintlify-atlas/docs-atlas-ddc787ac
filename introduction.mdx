@@ -1,0 +1,239 @@
+---
+title: "Welcome to c15t"
+description: "Developer-first consent management that transforms privacy compliance into a fully observable system"
+---
+
+## What is c15t?
+
+c15t is a headless consent engine that transforms privacy management from a compliance checkbox into a fully observable system. Built for modern development teams, it provides a flexible, performant solution for managing user consent across web applications.
+
+<CardGroup cols={2}>
+  <Card title="Quick start" icon="rocket" href="/quickstart">
+    Get a working cookie banner in under 5 minutes
+  </Card>
+  <Card title="Framework guides" icon="code" href="/frameworks/react/quickstart">
+    React, Next.js, and vanilla JavaScript integrations
+  </Card>
+  <Card title="Script loader" icon="bolt" href="/frameworks/javascript/script-loader">
+    Load analytics and marketing scripts based on consent
+  </Card>
+  <Card title="API reference" icon="book" href="/api/core/create-consent-store">
+    Complete API documentation and type signatures
+  </Card>
+</CardGroup>
+
+## Why c15t?
+
+### Developer-first design
+
+Built by developers for developers. c15t provides a clean, type-safe API that integrates seamlessly with your existing toolchain.
+
+```typescript
+import { createConsentManagerStore } from 'c15t';
+
+const store = createConsentManagerStore(manager, {
+  scripts: [
+    {
+      id: 'google-analytics',
+      src: 'https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID',
+      category: 'measurement',
+      onLoad: () => {
+        window.dataLayer = window.dataLayer || [];
+        window.gtag('consent', 'update', { analytics_storage: 'granted' });
+      }
+    }
+  ]
+});
+```
+
+### Framework agnostic
+
+Works across JavaScript frameworks with first-class support for React, Next.js, and vanilla JavaScript.
+
+<CodeGroup>
+```tsx React
+import { ConsentManagerProvider, CookieBanner } from '@c15t/react';
+
+function App() {
+  return (
+    <ConsentManagerProvider options={{ mode: 'offline' }}>
+      <YourApp />
+      <CookieBanner />
+    </ConsentManagerProvider>
+  );
+}
+```
+
+```tsx Next.js
+import { ConsentManagerProvider, CookieBanner } from '@c15t/react';
+
+export default function RootLayout({ children }) {
+  return (
+    <html>
+      <body>
+        <ConsentManagerProvider options={{ mode: 'offline' }}>
+          {children}
+          <CookieBanner />
+        </ConsentManagerProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+```javascript JavaScript
+import { configureConsentManager, createConsentManagerStore } from 'c15t';
+
+const manager = configureConsentManager({ mode: 'offline' });
+const store = createConsentManagerStore(manager);
+```
+</CodeGroup>
+
+### GDPR compliant by default
+
+Automatic compliance with GDPR, CCPA, LGPD, and other privacy regulations. c15t handles consent categories, geo-location detection, and audit logging out of the box.
+
+<Note>
+  c15t provides **five consent categories** aligned with GDPR requirements: necessary, functionality, measurement, experience, and marketing.
+</Note>
+
+### Server-side rendering support
+
+Full SSR support for Next.js and other frameworks. Consent state syncs seamlessly between server and client.
+
+### Fully observable
+
+Track every consent interaction with built-in callbacks and event hooks:
+
+```typescript
+const store = createConsentManagerStore(manager, {
+  callbacks: {
+    onConsentSet: ({ preferences }) => {
+      console.log('Consent updated:', preferences);
+      analytics.track('consent_updated', preferences);
+    },
+    onBannerFetched: ({ showConsentBanner, jurisdiction }) => {
+      console.log('Banner decision:', showConsentBanner, jurisdiction);
+    }
+  }
+});
+```
+
+## Key features
+
+<AccordionGroup>
+  <Accordion title="Consent categories" icon="list-check">
+    Five built-in consent categories aligned with GDPR:
+    
+    - **Necessary**: Essential cookies required for basic functionality (always enabled)
+    - **Functionality**: Enhanced features and personalization
+    - **Measurement**: Analytics and performance tracking
+    - **Experience**: User experience improvements
+    - **Marketing**: Advertising and marketing purposes
+  </Accordion>
+  
+  <Accordion title="Script loader" icon="code">
+    Dynamically load third-party scripts based on user consent:
+    
+    ```typescript
+    const store = createConsentManagerStore(manager, {
+      scripts: [
+        {
+          id: 'google-analytics',
+          src: 'https://www.googletagmanager.com/gtag/js?id=GA_ID',
+          category: 'measurement'
+        },
+        {
+          id: 'facebook-pixel',
+          src: 'https://connect.facebook.net/en_US/fbevents.js',
+          category: 'marketing'
+        }
+      ]
+    });
+    ```
+    
+    Scripts automatically load when consent is granted and unload when revoked.
+  </Accordion>
+  
+  <Accordion title="Internationalization" icon="globe">
+    Built-in translation support for multiple languages:
+    
+    - Automatic browser language detection
+    - Server-side translation when using c15t backend
+    - Custom translation configs
+    - Partial translation support
+  </Accordion>
+  
+  <Accordion title="Customizable UI" icon="palette">
+    Headless components with full styling control:
+    
+    - Pre-built, accessible components
+    - Compound component pattern for custom layouts
+    - Theme system with CSS variables
+    - Tailwind CSS support
+  </Accordion>
+  
+  <Accordion title="Geo-location detection" icon="map-location-dot">
+    Automatically detect user location and apply appropriate regulations:
+    
+    - GDPR for EU users
+    - CCPA for California residents
+    - Other regional privacy laws
+    - Jurisdiction-aware banner display
+  </Accordion>
+</AccordionGroup>
+
+## Use cases
+
+<Steps>
+  <Step title="SaaS applications">
+    Implement compliant consent management for your SaaS product with minimal setup. c15t handles consent state, geo-location detection, and script loading automatically.
+  </Step>
+  
+  <Step title="Marketing websites">
+    Load marketing and analytics scripts only when users consent. Integrate with Google Tag Manager, Meta Pixel, PostHog, and other popular tools.
+  </Step>
+  
+  <Step title="E-commerce platforms">
+    Ensure GDPR and CCPA compliance for your online store while maintaining conversion tracking and marketing capabilities.
+  </Step>
+  
+  <Step title="Content platforms">
+    Manage consent for embedded content like YouTube videos, social media widgets, and third-party integrations.
+  </Step>
+</Steps>
+
+## Packages
+
+c15t is organized into focused packages for different use cases:
+
+| Package | Description | npm |
+|---------|-------------|-----|
+| `c15t` | Core consent management library | [![npm](https://img.shields.io/npm/v/c15t)](https://www.npmjs.com/package/c15t) |
+| `@c15t/react` | React components and hooks | [![npm](https://img.shields.io/npm/v/@c15t/react)](https://www.npmjs.com/package/@c15t/react) |
+| `@c15t/nextjs` | Next.js integration with SSR support | [![npm](https://img.shields.io/npm/v/@c15t/nextjs)](https://www.npmjs.com/package/@c15t/nextjs) |
+| `@c15t/translations` | Internationalization support | [![npm](https://img.shields.io/npm/v/@c15t/translations)](https://www.npmjs.com/package/@c15t/translations) |
+| `@c15t/scripts` | Prebuilt scripts for popular services | [![npm](https://img.shields.io/npm/v/@c15t/scripts)](https://www.npmjs.com/package/@c15t/scripts) |
+| `@c15t/backend` | Self-hosted backend | [![npm](https://img.shields.io/npm/v/@c15t/backend)](https://www.npmjs.com/package/@c15t/backend) |
+| `@c15t/cli` | Command-line interface | [![npm](https://img.shields.io/npm/v/@c15t/cli)](https://www.npmjs.com/package/@c15t/cli) |
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Quick start guide" icon="play" href="/quickstart">
+    Get your first cookie banner working in minutes
+  </Card>
+  <Card title="React guide" icon="react" href="/frameworks/react/quickstart">
+    Learn how to use c15t with React
+  </Card>
+  <Card title="Next.js guide" icon="n" href="/frameworks/nextjs/quickstart">
+    Integrate c15t into your Next.js application
+  </Card>
+  <Card title="JavaScript guide" icon="js" href="/frameworks/javascript/quickstart">
+    Use c15t with vanilla JavaScript
+  </Card>
+</CardGroup>
+
+<Note>
+  **Need help?** Join our [Discord community](https://c15t.link/discord) or check out our [GitHub repository](https://github.com/c15t/c15t).
+</Note>

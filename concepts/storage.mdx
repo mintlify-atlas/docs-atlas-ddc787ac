@@ -1,0 +1,500 @@
+---
+title: Storage
+description: Understanding how c15t persists consent data using cookies and localStorage
+---
+
+## Overview
+
+c15t uses a dual-storage strategy to persist consent data, storing information in both **cookies** and **localStorage** for maximum reliability and cross-domain functionality. This ensures consent preferences are preserved across sessions and subdomains.
+
+## Storage Mechanisms
+
+### Dual Storage Strategy
+
+c15t automatically saves consent data to both storage mechanisms:
+
+1. **Cookies**: Primary storage method
+   - Work across subdomains (when configured)
+   - Accessible to both client and server
+   - Sent with every HTTP request
+   - More reliable for cross-domain scenarios
+
+2. **localStorage**: Backup storage method
+   - Domain-specific storage
+   - Only accessible to client-side JavaScript
+   - Higher storage capacity
+   - Faster read access
+
+### Storage Priority
+
+When retrieving consent data, c15t uses this priority order:
+
+1. **Cookie** (if exists) - More reliable, especially for cross-subdomain
+2. **localStorage** (fallback) - For single-domain scenarios
+
+From `src/libs/cookie/storage.ts:232`:
+
+```typescript
+// Cookie takes priority when it exists
+if (cookieData) {
+  chosenData = cookieData;
+  chosenSource = 'cookie';
+} else if (localStorageData) {
+  chosenData = localStorageData;
+  chosenSource = 'localStorage';
+}
+```
+
+## Storage Configuration
+
+Configure storage behavior through the `StorageConfig` interface:
+
+```typescript
+interface StorageConfig {
+  storageKey?: string;          // Default: 'c15t'
+  crossSubdomain?: boolean;     // Default: false
+  defaultDomain?: string;       // Default: '' (current domain)
+  defaultExpiryDays?: number;   // Default: 365
+}
+```
+
+### Basic Configuration
+
+```typescript
+import { createConsentManagerStore } from '@c15t/core';
+
+const store = createConsentManagerStore(client, {
+  storageConfig: {
+    storageKey: 'my-consent',      // Custom storage key
+    crossSubdomain: true,           // Enable cross-subdomain
+    defaultExpiryDays: 180          // 6 months expiry
+  }
+});
+```
+
+## Storage Key
+
+### Current Storage Key (v1.8+)
+
+The default storage key is `c15t`:
+
+```typescript
+// From src/store.initial-state.ts:19
+export const STORAGE_KEY_V2 = 'c15t';
+```
+
+### Legacy Storage Key (v1.7.x and earlier)
+
+Older versions used `privacy-consent-storage`:
+
+```typescript
+// From src/store.initial-state.ts:30
+export const STORAGE_KEY = 'privacy-consent-storage';
+```
+
+### Automatic Migration
+
+c15t automatically migrates data from the legacy storage key to the new key:
+
+```typescript
+// From src/libs/cookie/storage.ts:28
+function migrateLegacyStorage(config?: StorageConfig): void {
+  const newKey = config?.storageKey || 'c15t';
+  const legacyKey = 'privacy-consent-storage';
+  
+  // Check for legacy data and migrate
+  if (legacyData) {
+    localStorage.setItem(newKey, legacyData);
+    localStorage.removeItem(legacyKey);
+    console.log('[c15t] Migrated consent data');
+  }
+}
+```
+
+Migration happens automatically on first read - no manual intervention required.
+
+## Cookie Storage
+
+### Cookie Format
+
+Cookies use a compact flat format to minimize size:
+
+```
+c15t=consents.necessary:1,consents.analytics:0,consentInfo.time:1761911048
+```
+
+This format:
+- Uses key:value pairs separated by commas
+- Omits `false` values for compression
+- Uses shortened keys to reduce cookie size
+- Avoids JSON special characters
+
+### Cookie Options
+
+```typescript
+interface CookieOptions {
+  expiryDays?: number;          // Default: 365
+  crossSubdomain?: boolean;     // Default: false
+  domain?: string;              // Default: '' (current domain)
+  path?: string;                // Default: '/'
+  secure?: boolean;             // Default: true in production
+  sameSite?: 'Strict' | 'Lax' | 'None';  // Default: 'Lax'
+}
+```
+
+### Setting Cookies
+
+```typescript
+// Current domain only (default, most secure)
+saveConsentToStorage(data);
+
+// Cross-subdomain (simple way)
+saveConsentToStorage(data, { crossSubdomain: true });
+
+// Explicit domain (advanced)
+saveConsentToStorage(data, { domain: '.example.com' });
+```
+
+### Cross-Subdomain Cookies
+
+Enable cross-subdomain cookies to share consent across all subdomains:
+
+```typescript
+const store = createConsentManagerStore(client, {
+  storageConfig: {
+    crossSubdomain: true  // Works across app.example.com, www.example.com, etc.
+  }
+});
+```
+
+When enabled:
+- Cookie domain is automatically set to root domain (`.example.com`)
+- Consent is shared across all subdomains
+- User only needs to consent once
+
+### Domain Configuration
+
+Three domain modes are available:
+
+| Mode | Configuration | Scope | Use Case |
+|------|--------------|-------|----------|
+| **Current Domain** | `domain: ''` (default) | `app.example.com` only | Single domain, most secure |
+| **Cross-Subdomain** | `crossSubdomain: true` | All subdomains (`.example.com`) | Multi-subdomain apps |
+| **Explicit Domain** | `domain: '.example.com'` | Specified domain | Advanced control |
+
+From `src/libs/cookie/operations.ts:48`:
+
+```typescript
+if (opts.crossSubdomain && !options?.domain) {
+  opts.domain = getRootDomain();  // Automatically set to .example.com
+}
+```
+
+## localStorage Storage
+
+### localStorage Format
+
+localStorage stores consent data as JSON:
+
+```json
+{
+  "consents": {
+    "necessary": true,
+    "analytics": false,
+    "marketing": false,
+    "experience": false,
+    "functionality": false
+  },
+  "consentInfo": {
+    "time": 1761911048,
+    "id": "consent_abc123",
+    "identified": true
+  }
+}
+```
+
+### Reading from localStorage
+
+```javascript
+// Direct access
+const stored = localStorage.getItem('c15t');
+const consentData = JSON.parse(stored);
+
+console.log(consentData.consents);
+```
+
+### Domain-Specific Behavior
+
+localStorage is domain-specific:
+- `app.example.com` has separate storage from `www.example.com`
+- Cannot be shared across subdomains
+- Used as fallback when cookies aren't available
+
+## Storage Operations
+
+### Saving Consent Data
+
+```typescript
+import { saveConsentToStorage } from '@c15t/core';
+
+const data = {
+  consents: {
+    necessary: true,
+    analytics: true,
+    marketing: false,
+    experience: false,
+    functionality: false
+  },
+  consentInfo: {
+    time: Date.now(),
+    id: 'consent_xyz'
+  }
+};
+
+// Save to both storage mechanisms
+saveConsentToStorage(data);
+```
+
+From `src/libs/cookie/storage.ts:86`:
+
+```typescript
+export function saveConsentToStorage(
+  data: { consents: Partial<ConsentState>; consentInfo: ConsentInfo },
+  options?: CookieOptions,
+  config?: StorageConfig
+): void {
+  // Save to localStorage
+  if (typeof window !== 'undefined' && window.localStorage) {
+    window.localStorage.setItem(storageKey, JSON.stringify(data));
+  }
+  
+  // Save to cookie
+  setCookie(storageKey, data, options, config);
+}
+```
+
+### Reading Consent Data
+
+```typescript
+import { getConsentFromStorage } from '@c15t/core';
+
+// Automatically reads from cookies (priority) or localStorage (fallback)
+const consent = getConsentFromStorage();
+
+if (consent) {
+  console.log('User consents:', consent.consents);
+  console.log('Consent time:', consent.consentInfo.time);
+}
+```
+
+### Deleting Consent Data
+
+```typescript
+import { deleteConsentFromStorage } from '@c15t/core';
+
+// Remove from both storage mechanisms
+deleteConsentFromStorage();
+
+// Or use the store method
+store.getState().resetConsents();
+```
+
+## Storage Synchronization
+
+c15t automatically synchronizes data between storage mechanisms:
+
+### Cookie to localStorage Sync
+
+When cookie data is found but localStorage is out of sync:
+
+```typescript
+// From src/libs/cookie/storage.ts:255
+if (chosenSource === 'cookie') {
+  // Sync cookie to localStorage (cookie is source of truth)
+  if (cookieJson !== localStorageJson) {
+    window.localStorage.setItem(storageKey, cookieJson);
+    console.log('[c15t] Updated localStorage with consent from cookie');
+  }
+}
+```
+
+### localStorage to Cookie Sync
+
+When localStorage data exists but cookie doesn't:
+
+```typescript
+// From src/libs/cookie/storage.ts:248
+if (chosenSource === 'localStorage' && !cookieData) {
+  // Sync localStorage to cookie
+  setCookie(storageKey, chosenData, undefined, config);
+  console.log('[c15t] Synced consent from localStorage to cookie');
+}
+```
+
+## Data Normalization
+
+All consent data is normalized to ensure consistency:
+
+```typescript
+// From src/libs/cookie/storage.ts:138
+function normalizeConsentData(data) {
+  const consents = data.consents || {};
+  const normalized = { ...consents };
+  
+  // Ensure all known consent types have explicit boolean values
+  for (const consentName of allConsentNames) {
+    normalized[consentName] = consents[consentName] ?? false;
+  }
+  
+  return { ...data, consents: normalized };
+}
+```
+
+This ensures:
+- All consent values are explicit booleans (never `undefined`)
+- Missing consent types default to `false`
+- Custom consent types are preserved
+
+## Storage Expiry
+
+### Cookie Expiry
+
+Cookies expire after a configurable period:
+
+```typescript
+const store = createConsentManagerStore(client, {
+  storageConfig: {
+    defaultExpiryDays: 365  // 1 year (default)
+  }
+});
+```
+
+From `src/libs/cookie/operations.ts:68`:
+
+```typescript
+const date = new Date();
+date.setTime(date.getTime() + opts.expiryDays * 24 * 60 * 60 * 1000);
+const expires = `expires=${date.toUTCString()}`;
+```
+
+### localStorage Persistence
+
+localStorage data persists indefinitely until:
+- User clears browser data
+- Your code explicitly deletes it
+- User resets consent preferences
+
+## Storage Size Optimization
+
+### Cookie Size Reduction
+
+c15t uses several techniques to minimize cookie size:
+
+1. **Omit false values**: Only store `true` consents
+2. **Shorten keys**: `consents.necessary` → `c.n`
+3. **Flat format**: Avoid JSON overhead
+4. **Compact storage key**: `c15t` instead of `privacy-consent-storage`
+
+### Example Size Comparison
+
+**Unoptimized JSON (v1.7.x):**
+```
+privacy-consent-storage={"consents":{"necessary":true,"analytics":false}}
+```
+Size: ~78 bytes
+
+**Optimized flat format (v1.8+):**
+```
+c15t=c.n:1
+```
+Size: ~11 bytes
+
+**Savings: ~86% reduction**
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use cross-subdomain for multi-domain apps">
+    Enable cross-subdomain cookies if your app spans multiple subdomains to provide a consistent consent experience.
+
+    ```typescript
+    storageConfig: {
+      crossSubdomain: true
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Set appropriate expiry periods">
+    Configure cookie expiry based on your compliance requirements. GDPR typically recommends 12 months maximum.
+
+    ```typescript
+    storageConfig: {
+      defaultExpiryDays: 365  // 12 months
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Use custom storage keys for multiple instances">
+    If running multiple consent managers on the same domain, use unique storage keys.
+
+    ```typescript
+    storageConfig: {
+      storageKey: 'app1-consent'  // Unique per instance
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Monitor storage failures">
+    Both storage mechanisms can fail (privacy mode, quota exceeded). c15t handles this gracefully but you should monitor for issues.
+
+    ```typescript
+    try {
+      saveConsentToStorage(data);
+    } catch (error) {
+      console.error('Storage failed:', error);
+      // Fallback strategy
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Test in private/incognito mode">
+    Always test your consent implementation in private browsing mode where storage may behave differently.
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+### Consent Not Persisting
+
+**Problem**: User consent resets on page reload.
+
+**Solutions**:
+1. Check if cookies are enabled in the browser
+2. Verify localStorage is accessible (not in private mode)
+3. Check for correct domain configuration
+4. Verify no browser extensions are blocking storage
+
+### Cross-Subdomain Not Working
+
+**Problem**: Consent not shared across subdomains.
+
+**Solutions**:
+1. Ensure `crossSubdomain: true` is set
+2. Verify root domain is correctly detected
+3. Check cookie domain in browser DevTools
+4. Confirm all subdomains are on the same root domain
+
+### Storage Quota Exceeded
+
+**Problem**: localStorage quota exceeded error.
+
+**Solutions**:
+1. c15t uses minimal storage (~1KB), check for other apps using storage
+2. Clear old consent data if using custom storage keys
+3. Cookies are prioritized and have no practical quota issues
+
+## Related Documentation
+
+- [Consent State](/concepts/consent-state) - Understanding consent state architecture
+- [Consent Types](/concepts/consent-types) - Available consent categories
+- [Cookie Configuration](/api-reference/configuration) - Advanced cookie settings

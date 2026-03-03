@@ -1,0 +1,473 @@
+---
+title: Compliance Regions
+description: Understanding jurisdiction detection and compliance with GDPR, CCPA, LGPD, and other privacy regulations
+---
+
+## Overview
+
+c15t automatically detects user location and applies appropriate privacy regulations based on their jurisdiction. The library supports compliance with major privacy frameworks including GDPR, CCPA, LGPD, and other regional privacy laws.
+
+## Supported Jurisdictions
+
+c15t recognizes the following privacy regulation frameworks:
+
+### GDPR (General Data Protection Regulation)
+
+**Applies to**: European Union, European Economic Area, United Kingdom
+
+**Countries**:
+- **EU**: Austria, Belgium, Bulgaria, Croatia, Cyprus, Czech Republic, Denmark, Estonia, Finland, France, Germany, Greece, Hungary, Ireland, Italy, Latvia, Lithuania, Luxembourg, Malta, Netherlands, Poland, Portugal, Romania, Slovakia, Slovenia, Spain, Sweden
+- **EEA**: Iceland, Norway, Liechtenstein
+- **UK**: Great Britain
+
+**Jurisdiction Code**: `GDPR`
+
+**Requirements**:
+- Explicit opt-in consent required
+- Users must be informed about data collection
+- Right to withdraw consent
+- Data portability and deletion rights
+
+From `src/libs/jurisdiction.ts:6-35`:
+
+```typescript
+const jurisdictions = {
+  EU: new Set([
+    'AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR',
+    'DE', 'GR', 'HU', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL',
+    'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE'
+  ]),
+  EEA: new Set(['IS', 'NO', 'LI']),
+  UK: new Set(['GB'])
+};
+```
+
+---
+
+### Switzerland
+
+**Applies to**: Switzerland
+
+**Countries**: Switzerland (CH)
+
+**Jurisdiction Code**: `CH`
+
+**Requirements**:
+- Similar to GDPR
+- Follows Federal Act on Data Protection (FADP)
+- Requires consent for data processing
+
+---
+
+### LGPD (Lei Geral de Proteção de Dados)
+
+**Applies to**: Brazil
+
+**Countries**: Brazil (BR)
+
+**Jurisdiction Code**: `BR`
+
+**Requirements**:
+- Similar to GDPR
+- Explicit consent required
+- Right to data access and deletion
+- Specific rules for sensitive data
+
+---
+
+### PIPEDA (Personal Information Protection and Electronic Documents Act)
+
+**Applies to**: Canada
+
+**Countries**: Canada (CA)
+
+**Jurisdiction Code**: `PIPEDA`
+
+**Requirements**:
+- Meaningful consent required
+- Purpose specification for data collection
+- Access and correction rights
+
+---
+
+### APPI (Act on the Protection of Personal Information)
+
+**Applies to**: Japan
+
+**Countries**: Japan (JP)
+
+**Jurisdiction Code**: `APPI`
+
+**Requirements**:
+- Consent for data collection
+- Purpose limitation
+- Security safeguards required
+
+---
+
+### PIPA (Personal Information Protection Act)
+
+**Applies to**: South Korea
+
+**Countries**: South Korea (KR)
+
+**Jurisdiction Code**: `PIPA`
+
+**Requirements**:
+- Consent required for collection
+- Notice of collection purpose
+- Right to access and delete data
+
+---
+
+### Australia
+
+**Applies to**: Australia
+
+**Countries**: Australia (AU)
+
+**Jurisdiction Code**: `AU`
+
+**Requirements**:
+- Privacy Act 1988 compliance
+- Australian Privacy Principles (APPs)
+- Consent and notification requirements
+
+---
+
+## Jurisdiction Detection
+
+c15t automatically detects the user's jurisdiction based on their country code:
+
+```typescript
+// From src/libs/jurisdiction.ts:5
+export function checkJurisdiction(countryCode: string | null) {
+  // Map jurisdiction sets to their respective codes
+  const jurisdictionMap = [
+    {
+      sets: [jurisdictions.EU, jurisdictions.EEA, jurisdictions.UK],
+      code: 'GDPR',
+    },
+    { sets: [jurisdictions.CH], code: 'CH' },
+    { sets: [jurisdictions.BR], code: 'BR' },
+    { sets: [jurisdictions.CA], code: 'PIPEDA' },
+    { sets: [jurisdictions.AU], code: 'AU' },
+    { sets: [jurisdictions.JP], code: 'APPI' },
+    { sets: [jurisdictions.KR], code: 'PIPA' },
+  ] as const;
+  
+  // Find matching jurisdiction
+  for (const { sets, code } of jurisdictionMap) {
+    if (sets.some((set) => set.has(normalizedCountryCode))) {
+      jurisdictionCode = code;
+      showConsentBanner = true;
+      break;
+    }
+  }
+}
+```
+
+### Location Information
+
+Location data is stored in the consent state:
+
+```typescript
+type LocationInfo = {
+  countryCode: string | null;        // ISO country code (e.g., 'US', 'GB', 'DE')
+  regionCode: string | null;         // Region/state code (e.g., 'CA', 'ENG')
+  jurisdiction: string | null;       // Jurisdiction code (e.g., 'GDPR', 'CCPA')
+  jurisdictionMessage: string | null; // Human-readable jurisdiction message
+};
+```
+
+**Example:**
+
+```typescript
+const locationInfo: LocationInfo = {
+  countryCode: 'GB',
+  regionCode: 'ENG',
+  jurisdiction: 'GDPR',
+  jurisdictionMessage: 'GDPR or equivalent regulations require a cookie banner.'
+};
+```
+
+## US State Privacy Laws
+
+For US-specific privacy laws, c15t detects state-level regulations:
+
+### CCPA (California Consumer Privacy Act)
+
+**Applies to**: California residents
+
+**Jurisdiction**: US region code `CA`
+
+**Requirements**:
+- Right to know what data is collected
+- Right to delete personal data
+- Right to opt-out of data sale
+- "Do Not Sell My Personal Information" link
+
+### Other US State Laws
+
+Several states have enacted privacy laws similar to CCPA:
+
+- **Virginia** (VCDPA): Virginia Consumer Data Protection Act
+- **Colorado** (CPA): Colorado Privacy Act
+- **Connecticut** (CTDPA): Connecticut Data Privacy Act
+- **Utah** (UCPA): Utah Consumer Privacy Act
+
+**Note**: c15t uses region code detection to identify applicable state laws. Configure your backend to return appropriate jurisdiction codes for these states.
+
+## Legacy Compliance Settings (Deprecated)
+
+<Warning>
+  The `complianceSettings` API is deprecated and will be removed in v2.0. Use location-based jurisdiction detection instead.
+</Warning>
+
+Older versions of c15t used a manual compliance settings structure:
+
+```typescript
+// From src/store.initial-state.ts:122 (deprecated)
+complianceSettings: {
+  gdpr: { enabled: true, appliesGlobally: true, applies: true },
+  ccpa: { enabled: true, appliesGlobally: false, applies: undefined },
+  lgpd: { enabled: false, appliesGlobally: false, applies: undefined },
+  usStatePrivacy: { enabled: true, appliesGlobally: false, applies: undefined }
+}
+```
+
+This approach is replaced by automatic jurisdiction detection based on user location.
+
+## Configuring Jurisdiction Behavior
+
+### Ignore Geo Location
+
+Always show the consent banner regardless of location:
+
+```typescript
+const store = createConsentManagerStore(client, {
+  ignoreGeoLocation: true  // Always show banner
+});
+```
+
+Use this when:
+- You want to show consent to all users globally
+- You're implementing privacy-by-design principles
+- You want maximum compliance coverage
+
+### Force Location Overrides
+
+Manually override detected location for testing or specific use cases:
+
+```typescript
+const store = createConsentManagerStore(client, {
+  overrides: {
+    country: 'DE',      // Force Germany
+    region: 'BY',       // Force Bavaria
+    language: 'de'      // Force German
+  }
+});
+
+// Or set dynamically
+store.getState().setOverrides({
+  country: 'FR',
+  region: 'IDF',
+  language: 'fr'
+});
+```
+
+### Location Information Access
+
+```typescript
+// Get current location info
+const { locationInfo } = store.getState();
+
+if (locationInfo) {
+  console.log('Country:', locationInfo.countryCode);     // 'GB'
+  console.log('Region:', locationInfo.regionCode);       // 'ENG'
+  console.log('Jurisdiction:', locationInfo.jurisdiction); // 'GDPR'
+  console.log('Message:', locationInfo.jurisdictionMessage);
+}
+
+// Set location info manually
+store.getState().setLocationInfo({
+  countryCode: 'US',
+  regionCode: 'CA',
+  jurisdiction: 'CCPA',
+  jurisdictionMessage: 'California privacy law applies'
+});
+```
+
+## Global Privacy Control (Experimental)
+
+<Warning>
+  Global Privacy Control support is experimental and may change in future versions.
+</Warning>
+
+Global Privacy Control (GPC) is a browser signal that indicates user privacy preferences:
+
+```typescript
+const store = createConsentManagerStore(client, {
+  experimental_globalPrivacyControl: true  // Honor GPC signals
+});
+```
+
+When enabled:
+- Detects `navigator.globalPrivacyControl` signal
+- Automatically opts out of non-essential tracking in supported jurisdictions
+- Primarily affects CCPA (opt-out) jurisdictions
+
+**Supported Browsers**:
+- Brave
+- Firefox (via extension)
+- Chrome (via extension)
+
+## Jurisdiction-Specific Consent Behavior
+
+### GDPR (Opt-In)
+
+```typescript
+// GDPR requires explicit opt-in
+const gdprDefault = {
+  necessary: true,      // Always allowed
+  analytics: false,     // Requires consent
+  marketing: false,     // Requires consent
+  experience: false,    // Requires consent
+  functionality: false  // Requires consent
+};
+```
+
+### CCPA (Opt-Out)
+
+```typescript
+// CCPA allows opt-out model
+const ccpaDefault = {
+  necessary: true,
+  analytics: true,      // Allowed unless user opts out
+  marketing: true,      // Allowed unless user opts out
+  experience: true,
+  functionality: true
+};
+
+// User can opt-out via "Do Not Sell My Personal Information"
+```
+
+**Note**: c15t currently uses an opt-in model for all jurisdictions by default. CCPA opt-out mode may be added in future versions.
+
+## Backend Integration
+
+When using c15t's hosted consent service, jurisdiction is automatically detected:
+
+```typescript
+// Fetch consent banner info (includes jurisdiction)
+const response = await store.getState().fetchConsentBannerInfo();
+
+// Response includes:
+// {
+//   showConsentBanner: true,
+//   jurisdiction: {
+//     code: 'GDPR',
+//     message: 'GDPR or equivalent regulations require a cookie banner.'
+//   },
+//   location: {
+//     countryCode: 'GB',
+//     regionCode: 'ENG'
+//   }
+// }
+```
+
+The backend uses IP geolocation to determine jurisdiction and returns appropriate settings.
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Default to showing consent globally">
+    When in doubt, show the consent banner to all users regardless of location. This ensures maximum compliance.
+
+    ```typescript
+    {
+      ignoreGeoLocation: true
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Respect jurisdiction-specific requirements">
+    Different jurisdictions have different requirements. GDPR requires opt-in, while CCPA allows opt-out.
+
+    ```typescript
+    if (locationInfo?.jurisdiction === 'GDPR') {
+      // Strict opt-in required
+      showOptInBanner();
+    } else if (locationInfo?.jurisdiction === 'CCPA') {
+      // Opt-out available
+      showOptOutLink();
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Test with different locations">
+    Use location overrides to test your consent implementation for different jurisdictions.
+
+    ```typescript
+    // Test GDPR
+    setOverrides({ country: 'DE' });
+    
+    // Test CCPA
+    setOverrides({ country: 'US', region: 'CA' });
+    ```
+  </Accordion>
+
+  <Accordion title="Provide clear privacy information">
+    Ensure your privacy policy and consent UI clearly explain data usage for each jurisdiction.
+  </Accordion>
+
+  <Accordion title="Keep records of consent">
+    GDPR requires keeping records of consent. Use c15t's consent ID and timestamp to maintain audit trails.
+
+    ```typescript
+    const { consentInfo } = store.getState();
+    
+    // Log consent for audit
+    console.log('Consent ID:', consentInfo?.id);
+    console.log('Consent time:', consentInfo?.time);
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Compliance Checklist
+
+### GDPR Compliance
+
+- [ ] Obtain explicit consent before non-essential cookies
+- [ ] Provide clear information about data processing
+- [ ] Allow users to withdraw consent easily
+- [ ] Respect "necessary cookies only" selection
+- [ ] Maintain consent records with timestamps
+- [ ] Provide privacy policy link in consent UI
+- [ ] Allow granular consent per category
+
+### CCPA Compliance
+
+- [ ] Provide "Do Not Sell My Personal Information" link
+- [ ] Allow users to opt-out of data selling
+- [ ] Disclose categories of data collected
+- [ ] Provide privacy policy with data usage details
+- [ ] Honor Global Privacy Control signals (if enabled)
+- [ ] Respond to user data deletion requests
+
+### General Best Practices
+
+- [ ] Show consent banner in user's language
+- [ ] Make consent UI accessible (WCAG 2.1)
+- [ ] Don't block access to essential content
+- [ ] Load consent manager before other scripts
+- [ ] Test consent flow in multiple jurisdictions
+- [ ] Keep privacy policy up to date
+- [ ] Document consent mechanism in privacy policy
+
+## Related Documentation
+
+- [Consent State](/concepts/consent-state) - Understanding consent state management
+- [Consent Types](/concepts/consent-types) - Available consent categories
+- [Storage](/concepts/storage) - How consent is persisted
+- [Configuration](/api-reference/configuration) - Advanced compliance configuration

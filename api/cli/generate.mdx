@@ -1,0 +1,500 @@
+---
+title: Generate Command
+description: Generate c15t configuration and code for your project
+icon: code
+---
+
+## Overview
+
+The `generate` command is the primary way to set up c15t in your project. It provides an interactive wizard that guides you through configuration and generates all necessary files.
+
+## Usage
+
+```bash
+c15t generate [mode]
+```
+
+## Arguments
+
+<ParamField path="mode" type="string">
+  Optional storage mode to use. If not provided, you'll be prompted to select one.
+  
+  **Options:**
+  - `c15t` - Hosted mode (consent.io)
+  - `offline` - Browser-only storage
+  - `self-hosted` - Self-hosted backend
+  - `custom` - Custom implementation
+</ParamField>
+
+## Global Flags
+
+All [global flags](/api/cli/commands#global-flags) are available.
+
+## Storage Modes
+
+### Hosted Mode (c15t)
+
+**Recommended for most users**
+
+Use the fully managed c15t service at consent.io.
+
+```bash
+c15t generate c15t
+```
+
+**What it does:**
+- Creates `c15t.config.ts` with hosted configuration
+- Prompts for API key (or allows adding later)
+- Sets up environment variables
+- Installs `@c15t/react` package
+- Generates example components
+
+**Generated config:**
+```typescript
+import { defineConfig } from '@c15t/react';
+
+export const c15tConfig = defineConfig({
+  storageMode: 'hosted',
+  domain: 'your-domain.com',
+  apiKey: process.env.NEXT_PUBLIC_C15T_API_KEY,
+  endpoint: 'https://api.consent.io',
+});
+```
+
+**Terminal output:**
+```bash
+$ c15t generate c15t
+
+Starting onboarding process...
+✓ Framework detected: Next.js App Router
+✓ Domain: example.com
+✓ API Key configured
+? Would you like to use a .env file? › Yes
+✓ Created .env.local
+✓ Created c15t.config.ts
+? Install dependencies? › Yes
+⠹ Installing @c15t/react...
+✓ Dependencies installed
+🚀 Setup completed successfully!
+```
+
+---
+
+### Offline Mode
+
+**For browser-only storage without a backend**
+
+Stores consent preferences locally in the browser.
+
+```bash
+c15t generate offline
+```
+
+**What it does:**
+- Creates `c15t.config.ts` with offline configuration
+- Installs `@c15t/react` package
+- Configures browser storage
+- No API key required
+
+**Generated config:**
+```typescript
+import { defineConfig } from '@c15t/react';
+
+export const c15tConfig = defineConfig({
+  storageMode: 'offline',
+  domain: 'your-domain.com',
+  storage: {
+    type: 'localStorage',
+    key: 'c15t-consent',
+  },
+});
+```
+
+**Terminal output:**
+```bash
+$ c15t generate offline
+
+Starting onboarding process...
+✓ Framework detected: React
+✓ Domain: example.com
+✓ Configured offline storage
+✓ Created c15t.config.ts
+? Install dependencies? › Yes
+✓ Dependencies installed
+🚀 Setup completed successfully!
+
+Note: Offline mode stores consent in the browser only.
+Consent will not sync across devices.
+```
+
+---
+
+### Self-Hosted Mode
+
+**For running your own c15t backend**
+
+Deploy c15t on your own infrastructure.
+
+```bash
+c15t generate self-hosted
+# or use the self-host command
+c15t self-host generate
+```
+
+**What it does:**
+- Creates `c15t.config.ts` for frontend
+- Creates `c15t-backend.config.ts` for backend
+- Installs `@c15t/react` and `@c15t/backend` packages
+- Configures database connection
+- Sets up environment variables
+
+**Generated config (frontend):**
+```typescript
+import { defineConfig } from '@c15t/react';
+
+export const c15tConfig = defineConfig({
+  storageMode: 'self-hosted',
+  domain: 'your-domain.com',
+  endpoint: process.env.NEXT_PUBLIC_C15T_BACKEND_URL,
+});
+```
+
+**Generated config (backend):**
+```typescript
+import { defineBackendConfig } from '@c15t/backend';
+
+export const backendConfig = defineBackendConfig({
+  database: {
+    type: 'postgres',
+    connectionString: process.env.DATABASE_URL,
+  },
+});
+```
+
+**Terminal output:**
+```bash
+$ c15t generate self-hosted
+
+Starting onboarding process...
+✓ Framework detected: Next.js
+✓ Domain: example.com
+? Database type? › PostgreSQL
+? Database connection string? › postgresql://...
+✓ Created c15t.config.ts
+✓ Created c15t-backend.config.ts
+✓ Created .env.local
+? Install dependencies? › Yes
+⠹ Installing @c15t/react and @c15t/backend...
+✓ Dependencies installed
+🚀 Setup completed successfully!
+
+Next steps:
+1. Run migrations: c15t self-host migrate
+2. Deploy your backend
+3. Update NEXT_PUBLIC_C15T_BACKEND_URL
+
+For more help: https://c15t.com/docs/self-host/v2
+```
+
+---
+
+### Custom Mode
+
+**For full control over implementation**
+
+Implement your own storage and backend logic.
+
+```bash
+c15t generate custom
+```
+
+**What it does:**
+- Creates `c15t.config.ts` with custom handlers
+- Generates stub functions for custom implementation
+- Installs `@c15t/react` package
+
+**Generated config:**
+```typescript
+import { defineConfig } from '@c15t/react';
+
+export const c15tConfig = defineConfig({
+  storageMode: 'custom',
+  domain: 'your-domain.com',
+  handlers: {
+    onConsentGiven: async (consent) => {
+      // TODO: Implement your custom consent handler
+      console.log('Consent given:', consent);
+    },
+    onConsentRevoked: async (consentId) => {
+      // TODO: Implement your custom revocation handler
+      console.log('Consent revoked:', consentId);
+    },
+    getConsent: async (domain) => {
+      // TODO: Implement your custom consent retrieval
+      return null;
+    },
+  },
+});
+```
+
+**Terminal output:**
+```bash
+$ c15t generate custom
+
+Starting onboarding process...
+✓ Framework detected: Next.js
+✓ Domain: example.com
+✓ Created c15t.config.ts with custom handlers
+? Install dependencies? › Yes
+✓ Dependencies installed
+🚀 Setup completed successfully!
+
+Next steps:
+1. Implement custom handlers in c15t.config.ts
+2. Test your implementation
+
+For examples: https://c15t.com/docs/custom-implementation
+```
+
+## Interactive Prompts
+
+### Common Prompts
+
+#### Storage Mode Selection
+
+```bash
+? How would you like to store consent decisions?
+❯ Hosted c15t (consent.io) - Recommended: Fully managed service
+  Offline Mode - Store in browser, no backend needed
+  Self-Hosted - Run your own c15t backend
+  Custom Implementation - Full control over storage logic
+```
+
+#### Domain Configuration
+
+```bash
+? What is your domain? › example.com
+```
+
+#### Environment File
+
+```bash
+? Would you like to use a .env file? (Y/n) › Yes
+? Which file? ›
+❯ .env.local (Next.js default)
+  .env
+  .env.development
+```
+
+#### Dependency Installation
+
+```bash
+? Install dependencies now? (Y/n) › Yes
+```
+
+If you select No:
+```bash
+Skipped dependency installation.
+Run manually: bun install @c15t/react
+```
+
+### Framework-Specific Prompts
+
+#### Next.js Router Selection
+
+```bash
+? Which Next.js router are you using?
+❯ App Router (app directory)
+  Pages Router (pages directory)
+```
+
+#### Next.js Proxy Configuration (Hosted mode)
+
+```bash
+? Would you like to proxy API requests through Next.js?
+  This prevents CORS issues and hides your API key.
+  
+❯ Yes (Recommended)
+  No
+```
+
+If Yes:
+```typescript
+// next.config.js
+module.exports = {
+  async rewrites() {
+    return [
+      {
+        source: '/api/c15t/:path*',
+        destination: 'https://api.consent.io/:path*',
+      },
+    ];
+  },
+};
+```
+
+### Self-Hosted Specific Prompts
+
+#### Database Type
+
+```bash
+? Select your database:
+❯ PostgreSQL
+  MySQL
+  SQLite
+  Cloudflare D1
+```
+
+#### ORM Selection
+
+```bash
+? Select your ORM:
+❯ Kysely (Recommended)
+  Drizzle
+  Prisma
+  Raw SQL
+```
+
+#### Connection String
+
+```bash
+? Database connection string? › postgresql://user:pass@host:5432/db
+```
+
+## File Generation
+
+### Files Created by Mode
+
+| File | Hosted | Offline | Self-Hosted | Custom |
+|------|--------|---------|-------------|--------|
+| `c15t.config.ts` | ✓ | ✓ | ✓ | ✓ |
+| `c15t-backend.config.ts` | - | - | ✓ | - |
+| `.env.local` | ✓ | - | ✓ | Optional |
+| `app/layout.tsx` (Next.js) | ✓ | ✓ | ✓ | ✓ |
+| `components/ConsentBanner.tsx` | ✓ | ✓ | ✓ | ✓ |
+| `next.config.js` updates | Optional | - | - | - |
+
+### Example Component Structure
+
+#### Next.js App Router
+
+```
+project/
+├── app/
+│   ├── layout.tsx (modified)
+│   └── consent/
+│       └── page.tsx (new)
+├── components/
+│   ├── ConsentBanner.tsx (new)
+│   └── ConsentManager.tsx (new)
+├── c15t.config.ts (new)
+└── .env.local (new)
+```
+
+#### React
+
+```
+project/
+├── src/
+│   ├── App.tsx (modified)
+│   ├── components/
+│   │   ├── ConsentBanner.tsx (new)
+│   │   └── ConsentManager.tsx (new)
+│   └── c15t.config.ts (new)
+└── .env (new)
+```
+
+## Examples
+
+### Quick Setup with Hosted Mode
+
+```bash
+c15t generate c15t -y
+```
+
+Uses defaults and skips prompts.
+
+### Self-Hosted with Debug Logging
+
+```bash
+c15t generate self-hosted --logger debug
+```
+
+### Custom Config Location
+
+```bash
+c15t generate --config ./configs/c15t.config.ts
+```
+
+### Re-run to Update Config
+
+```bash
+c15t generate
+# Detects existing config
+? c15t.config.ts already exists. What would you like to do?
+❯ Update existing config
+  Overwrite with new config
+  Cancel
+```
+
+## Troubleshooting
+
+### Config Already Exists
+
+```bash
+$ c15t generate
+? c15t.config.ts already exists. Overwrite? (y/N) › No
+Operation cancelled.
+```
+
+**Solution:** Delete existing config or choose to update it.
+
+### Framework Not Detected
+
+```bash
+✗ Could not detect framework
+Please ensure you're running this command from your project root.
+```
+
+**Solution:**
+```bash
+# Check for package.json
+ls package.json
+
+# Ensure framework dependencies exist
+cat package.json | grep -E "(react|next)"
+```
+
+### Dependency Installation Failed
+
+```bash
+✗ Failed to install dependencies
+Please install manually: bun install @c15t/react
+```
+
+**Solution:**
+```bash
+bun install @c15t/react
+# or for self-hosted
+bun install @c15t/react @c15t/backend
+```
+
+### Invalid Domain
+
+```bash
+✗ Invalid domain format
+Please use format: example.com (without protocol)
+```
+
+**Solution:** Enter domain without `https://` or trailing slash.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Migrate Command" icon="database" href="/api/cli/migrate">
+    Run database migrations for self-hosted
+  </Card>
+  <Card title="All Commands" icon="terminal" href="/api/cli/commands">
+    View all available CLI commands
+  </Card>
+</CardGroup>

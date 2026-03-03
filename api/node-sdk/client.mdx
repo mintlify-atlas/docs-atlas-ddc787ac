@@ -1,0 +1,154 @@
+---
+title: Client Initialization
+description: Initialize and configure the c15t Node SDK client
+icon: plug
+---
+
+## Overview
+
+The c15t Node SDK provides a type-safe client for interacting with the c15t Consent Engine API. The client is built on top of the OpenAPI specification and provides full TypeScript support.
+
+## Installation
+
+```bash
+npm install @c15t/node-sdk
+# or
+bun install @c15t/node-sdk
+# or
+yarn add @c15t/node-sdk
+```
+
+## Client Initialization
+
+### Basic Usage
+
+```typescript
+import { c15tClient } from '@c15t/node-sdk';
+
+const client = c15tClient({
+  baseUrl: 'https://api.c15t.com',
+});
+```
+
+### With Authentication
+
+```typescript
+import { c15tClient } from '@c15t/node-sdk';
+
+const client = c15tClient({
+  baseUrl: 'https://api.c15t.com',
+  token: 'your-auth-token',
+});
+```
+
+### With Custom Headers
+
+```typescript
+import { c15tClient } from '@c15t/node-sdk';
+
+const client = c15tClient({
+  baseUrl: 'https://api.c15t.com',
+  token: 'your-auth-token',
+  headers: {
+    'X-Custom-Header': 'value',
+  },
+});
+```
+
+### With Path Prefix
+
+```typescript
+import { c15tClient } from '@c15t/node-sdk';
+
+const client = c15tClient({
+  baseUrl: 'https://api.example.com',
+  prefix: '/api/v1',
+});
+```
+
+## Configuration Options
+
+### `C15TClientOptions`
+
+<ParamField path="baseUrl" type="string" required>
+  Base URL for the API server.
+  
+  **Example:** `"https://api.c15t.com"`
+</ParamField>
+
+<ParamField path="token" type="string">
+  Authentication token for API requests. When provided, it will be included as a Bearer token in the Authorization header.
+  
+  **Example:** `"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
+</ParamField>
+
+<ParamField path="headers" type="Record<string, string>">
+  Additional headers to include with each request.
+  
+  **Example:** `{ "X-API-Version": "2.0" }`
+</ParamField>
+
+<ParamField path="prefix" type="string" default="/">
+  Prefix path for API endpoints. Useful for versioned APIs or when the API is mounted at a specific path.
+  
+  **Example:** `"/api/v1"`
+</ParamField>
+
+## Type Safety
+
+The client provides full TypeScript support with auto-completion and type checking:
+
+```typescript
+// TypeScript will provide autocomplete for all available methods
+const response = await client.consent.post({
+  domain: 'example.com',
+  type: 'cookie_banner',
+  preferences: {
+    marketing: true,
+    analytics: false,
+  },
+});
+
+// Response is fully typed
+console.log(response.id); // string
+console.log(response.status); // string
+```
+
+## Error Handling
+
+```typescript
+try {
+  const response = await client.consent.verify({
+    domain: 'example.com',
+    type: 'cookie_banner',
+    preferences: ['marketing'],
+  });
+  
+  console.log('Consent is valid:', response.isValid);
+} catch (error) {
+  // Handle API errors
+  console.error('Failed to verify consent:', error);
+}
+```
+
+## Self-Hosted Deployment
+
+For self-hosted deployments, point the client to your own backend:
+
+```typescript
+const client = c15tClient({
+  baseUrl: 'https://consent.yourdomain.com',
+  token: 'your-api-key',
+});
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="SDK Methods" icon="function" href="/api/node-sdk/methods">
+    Explore all available SDK methods
+  </Card>
+  <Card title="Type Definitions" icon="brackets-curly" href="/api/node-sdk/types">
+    View all TypeScript types
+  </Card>
+</CardGroup>

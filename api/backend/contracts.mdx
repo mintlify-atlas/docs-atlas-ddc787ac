@@ -1,0 +1,481 @@
+---
+title: 'Contracts'
+description: 'API contract definitions using oRPC for type-safe endpoints'
+icon: 'file-contract'
+---
+
+## Overview
+
+Contracts define the API interface using oRPC, providing type-safe request/response schemas and OpenAPI documentation.
+
+## Import
+
+```typescript
+import { contracts } from '@c15t/backend';
+import type { ContractsInputs, ContractsOutputs } from '@c15t/backend';
+```
+
+## Contract Structure
+
+Contracts are organized by feature:
+
+```typescript
+const contracts = {
+  consent: {
+    post: postConsentContract,
+    showBanner: showConsentBannerContract,
+    verify: verifyConsentContract,
+    identify: identifyUserContract,
+  },
+  meta: {
+    status: statusContract,
+  },
+};
+```
+
+## Consent Contracts
+
+### postConsentContract
+
+Contract for recording user consent.
+
+#### Route
+
+```typescript
+{
+  method: 'POST',
+  path: '/consent/set',
+  tags: ['consent', 'cookie-banner']
+}
+```
+
+#### Input Schema
+
+```typescript
+type PostConsentInput = 
+  | CookieBannerConsent
+  | PolicyBasedConsent
+  | OtherConsent;
+
+interface CookieBannerConsent {
+  type: 'cookie_banner';
+  domain: string;
+  preferences: Record<string, boolean>;
+  subjectId?: string;
+  externalSubjectId?: string;
+  identityProvider?: string;
+  metadata?: Record<string, unknown>;
+}
+
+interface PolicyBasedConsent {
+  type: 'privacy_policy' | 'dpa' | 'terms_and_conditions';
+  domain: string;
+  policyId?: string;
+  preferences?: Record<string, boolean>;
+  subjectId?: string;
+  externalSubjectId?: string;
+  identityProvider?: string;
+  metadata?: Record<string, unknown>;
+}
+
+interface OtherConsent {
+  type: 'marketing_communications' | 'age_verification' | 'other';
+  domain: string;
+  preferences?: Record<string, boolean>;
+  subjectId?: string;
+  externalSubjectId?: string;
+  identityProvider?: string;
+  metadata?: Record<string, unknown>;
+}
+```
+
+#### Output Schema
+
+```typescript
+interface PostConsentOutput {
+  id: string;
+  subjectId?: string;
+  externalSubjectId?: string;
+  domainId: string;
+  domain: string;
+  type: PolicyType;
+  status: string;
+  recordId: string;
+  metadata?: Record<string, unknown>;
+  givenAt: Date;
+}
+```
+
+#### Error Schemas
+
+```typescript
+type PostConsentErrors = {
+  INPUT_VALIDATION_FAILED: {
+    status: 422;
+    data: {
+      formErrors: string[];
+      fieldErrors: Record<string, string[]>;
+    };
+  };
+  SUBJECT_CREATION_FAILED: {
+    status: 400;
+    data: {
+      subjectId?: string;
+      externalSubjectId?: string;
+    };
+  };
+  DOMAIN_CREATION_FAILED: {
+    status: 500;
+    data: { domain: string };
+  };
+  POLICY_NOT_FOUND: {
+    status: 404;
+    data: { policyId: string; type: string };
+  };
+  CONSENT_CREATION_FAILED: {
+    status: 500;
+    data: { subjectId: string; domain: string };
+  };
+};
+```
+
+### showConsentBannerContract
+
+Contract for determining if consent banner should be shown.
+
+#### Route
+
+```typescript
+{
+  method: 'GET',
+  path: '/show-consent-banner',
+  tags: ['cookie-banner']
+}
+```
+
+#### Output Schema
+
+```typescript
+interface ShowBannerOutput {
+  showConsentBanner: boolean;
+  jurisdiction: {
+    code: string;
+    name: string;
+    requiresConsent: boolean;
+    description?: string;
+  };
+  location: {
+    countryCode: string | null;
+    regionCode: string | null;
+  };
+  translations: {
+    language: string;
+    translations: {
+      common: {
+        acceptAll: string;
+        rejectAll: string;
+        customize: string;
+        save: string;
+      };
+      cookieBanner: {
+        title: string;
+        description: string;
+      };
+      consentManagerDialog: {
+        title: string;
+        description: string;
+      };
+      consentTypes: {
+        experience: { title: string; description: string };
+        functionality: { title: string; description: string };
+        marketing: { title: string; description: string };
+        measurement: { title: string; description: string };
+        necessary: { title: string; description: string };
+      };
+      frame: {
+        title: string;
+        actionButton: string;
+      };
+      legalLinks: {
+        privacyPolicy: string;
+        termsOfService: string;
+        cookiePolicy: string;
+      };
+    };
+  };
+  branding: 'c15t' | 'consent' | 'none';
+}
+```
+
+### verifyConsentContract
+
+Contract for verifying if valid consent exists.
+
+#### Route
+
+```typescript
+{
+  method: 'POST',
+  path: '/consent/verify',
+  tags: ['consent']
+}
+```
+
+#### Input Schema
+
+```typescript
+interface VerifyConsentInput {
+  subjectId?: string;
+  externalSubjectId?: string;
+  domain: string;
+  type: PolicyType;
+  policyId?: string;
+  preferences?: string[];
+}
+```
+
+#### Output Schema
+
+```typescript
+interface VerifyConsentOutput {
+  isValid: boolean;
+  reasons?: string[];
+  consent?: {
+    id: string;
+    purposeIds: string[];
+  };
+}
+```
+
+#### Error Schemas
+
+```typescript
+type VerifyConsentErrors = {
+  INPUT_VALIDATION_FAILED: {
+    status: 422;
+    data: {
+      formErrors: string[];
+      fieldErrors: Record<string, string[] | undefined>;
+    };
+  };
+  SUBJECT_NOT_FOUND: {
+    status: 404;
+    data: {
+      subjectId?: string;
+      externalSubjectId?: string;
+    };
+  };
+  DOMAIN_NOT_FOUND: {
+    status: 404;
+    data: { domain: string };
+  };
+  POLICY_NOT_FOUND: {
+    status: 404;
+    data: { policyId: string; type: string };
+  };
+  NO_CONSENT_FOUND: {
+    status: 404;
+    data: {
+      policyId: string;
+      subjectId: string;
+      domainId: string;
+    };
+  };
+};
+```
+
+### identifyUserContract
+
+Contract for identifying/linking users with external identity providers.
+
+#### Route
+
+```typescript
+{
+  method: 'POST',
+  path: '/consent/identify',
+  tags: ['consent']
+}
+```
+
+#### Input Schema
+
+```typescript
+interface IdentifyUserInput {
+  subjectId?: string;
+  externalSubjectId: string;
+  identityProvider: string;
+}
+```
+
+#### Output Schema
+
+```typescript
+interface IdentifyUserOutput {
+  subjectId: string;
+  linked: boolean;
+}
+```
+
+## Meta Contracts
+
+### statusContract
+
+Contract for health check endpoint.
+
+#### Route
+
+```typescript
+{
+  method: 'GET',
+  path: '/meta/status',
+  tags: ['meta']
+}
+```
+
+#### Output Schema
+
+```typescript
+interface StatusOutput {
+  status: 'ok' | 'error';
+  version: string;
+  timestamp: number;
+}
+```
+
+## Type Inference
+
+### Inferring Input Types
+
+```typescript
+import type { ContractsInputs } from '@c15t/backend';
+
+// Get input type for specific endpoint
+type PostConsentInput = ContractsInputs['consent']['post'];
+type VerifyConsentInput = ContractsInputs['consent']['verify'];
+
+// Use in functions
+function recordConsent(input: PostConsentInput) {
+  // TypeScript knows the exact shape
+}
+```
+
+### Inferring Output Types
+
+```typescript
+import type { ContractsOutputs } from '@c15t/backend';
+
+// Get output type for specific endpoint
+type PostConsentOutput = ContractsOutputs['consent']['post'];
+type ShowBannerOutput = ContractsOutputs['consent']['showBanner'];
+
+// Use in functions
+async function getConsentStatus(): Promise<ShowBannerOutput> {
+  const response = await fetch('/show-consent-banner');
+  return response.json();
+}
+```
+
+## Usage Examples
+
+### Type-Safe API Client
+
+```typescript
+import type { ContractsInputs, ContractsOutputs } from '@c15t/backend';
+
+class ConsentClient {
+  constructor(private baseURL: string) {}
+  
+  async recordConsent(
+    input: ContractsInputs['consent']['post']
+  ): Promise<ContractsOutputs['consent']['post']> {
+    const response = await fetch(`${this.baseURL}/consent/set`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    });
+    return response.json();
+  }
+  
+  async verifyConsent(
+    input: ContractsInputs['consent']['verify']
+  ): Promise<ContractsOutputs['consent']['verify']> {
+    const response = await fetch(`${this.baseURL}/consent/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    });
+    return response.json();
+  }
+}
+```
+
+### Validation with Zod
+
+```typescript
+import { z } from 'zod';
+import type { ContractsInputs } from '@c15t/backend';
+
+// Create runtime validator from contract types
+const postConsentSchema = z.object({
+  domain: z.string(),
+  type: z.enum([
+    'cookie_banner',
+    'privacy_policy',
+    'dpa',
+    'terms_and_conditions',
+    'marketing_communications',
+    'age_verification',
+    'other',
+  ]),
+  preferences: z.record(z.boolean()).optional(),
+  subjectId: z.string().optional(),
+}) satisfies z.ZodType<ContractsInputs['consent']['post']>;
+
+// Validate input
+const result = postConsentSchema.safeParse(input);
+if (!result.success) {
+  console.error('Validation failed:', result.error);
+}
+```
+
+## Policy Types
+
+All contracts use the `PolicyType` enum:
+
+```typescript
+type PolicyType =
+  | 'cookie_banner'
+  | 'privacy_policy'
+  | 'dpa'
+  | 'terms_and_conditions'
+  | 'marketing_communications'
+  | 'age_verification'
+  | 'other';
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Use Type Inference" icon="wand-magic-sparkles">
+    Always use `ContractsInputs` and `ContractsOutputs` for type safety.
+  </Card>
+  
+  <Card title="Validate at Runtime" icon="shield-check">
+    Use Zod schemas for runtime validation in addition to TypeScript types.
+  </Card>
+  
+  <Card title="Handle All Errors" icon="triangle-exclamation">
+    Check error types and handle them appropriately in your application.
+  </Card>
+  
+  <Card title="Document Custom Types" icon="book">
+    When extending contracts, document custom fields thoroughly.
+  </Card>
+</CardGroup>
+
+## Related
+
+- [Core API](/api/backend/core)
+- [Router](/api/backend/router)
+- [Database Adapters](/api/backend/database-adapters)

@@ -1,0 +1,517 @@
+---
+title: PrivacyConsentState
+description: Store state interface with consent management methods
+---
+
+## Overview
+
+The `PrivacyConsentState` interface defines the complete API surface of the consent manager store, including state properties, methods for managing consent preferences, compliance settings, and callback management.
+
+## State Properties
+
+### Configuration
+
+<ResponseField name="config" type="object">
+  Package configuration information.
+  
+  <Expandable title="properties">
+    <ResponseField name="pkg" type="string">
+      Package name
+    </ResponseField>
+    <ResponseField name="version" type="string">
+      Package version
+    </ResponseField>
+    <ResponseField name="mode" type="string">
+      Runtime mode
+    </ResponseField>
+    <ResponseField name="meta" type="Record<string, unknown>">
+      Additional metadata
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Consent State
+
+<ResponseField name="consents" type="ConsentState">
+  Current consent states for all consent types. Maps consent type names to boolean values.
+  
+  ```typescript
+  {
+    necessary: true,
+    functionality: false,
+    measurement: true,
+    experience: false,
+    marketing: false
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="selectedConsents" type="ConsentState">
+  Selected consents that haven't been saved yet. Use `saveConsents()` to persist these preferences.
+</ResponseField>
+
+<ResponseField name="consentInfo" type="ConsentInfo | null">
+  Information about when and how consent was given.
+  
+  <Expandable title="ConsentInfo properties">
+    <ResponseField name="time" type="number">
+      Unix timestamp when consent was given
+    </ResponseField>
+    <ResponseField name="id" type="string">
+      Consent record ID (may be undefined for offline consents)
+    </ResponseField>
+    <ResponseField name="identified" type="boolean">
+      Whether the consent was linked to an authenticated user
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="consentTypes" type="ConsentType[]">
+  Available consent type configurations with display settings and default values.
+</ResponseField>
+
+<ResponseField name="gdprTypes" type="AllConsentNames[]">
+  Active GDPR consent types that are enabled for this instance.
+</ResponseField>
+
+### UI State
+
+<ResponseField name="showPopup" type="boolean">
+  Whether to show the consent banner popup.
+</ResponseField>
+
+<ResponseField name="isPrivacyDialogOpen" type="boolean">
+  Whether the privacy dialog is currently open.
+</ResponseField>
+
+<ResponseField name="isLoadingConsentInfo" type="boolean">
+  Whether consent banner information is currently being loaded.
+</ResponseField>
+
+<ResponseField name="hasFetchedBanner" type="boolean">
+  Whether consent banner information has been successfully fetched.
+</ResponseField>
+
+<ResponseField name="lastBannerFetchData" type="ConsentBannerResponse | null">
+  Last consent banner fetch data for callback replay.
+</ResponseField>
+
+<ResponseField name="branding" type="boolean">
+  Whether to show c15t branding.
+</ResponseField>
+
+### Location & Compliance
+
+<ResponseField name="locationInfo" type="LocationInfo | null">
+  User's location information.
+  
+  <Expandable title="LocationInfo properties">
+    <ResponseField name="countryCode" type="string | null">
+      ISO country code (e.g., 'US', 'GB', 'DE')
+    </ResponseField>
+    <ResponseField name="regionCode" type="string | null">
+      Region or state code (e.g., 'CA', 'ENG')
+    </ResponseField>
+    <ResponseField name="jurisdiction" type="string | null">
+      Jurisdiction code (e.g., 'GDPR', 'CCPA')
+    </ResponseField>
+    <ResponseField name="jurisdictionMessage" type="string | null">
+      Human-readable jurisdiction message
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="ignoreGeoLocation" type="boolean">
+  Whether to ignore geo location and always show the consent banner.
+</ResponseField>
+
+### Configuration
+
+<ResponseField name="translationConfig" type="TranslationConfig">
+  Translation configuration for the consent UI.
+</ResponseField>
+
+<ResponseField name="legalLinks" type="LegalLinks">
+  Configuration for legal links displayed in the consent UI.
+</ResponseField>
+
+<ResponseField name="callbacks" type="Callbacks">
+  Event callbacks for consent actions.
+</ResponseField>
+
+<ResponseField name="storageConfig" type="StorageConfig">
+  Storage configuration for consent persistence.
+</ResponseField>
+
+<ResponseField name="iframeBlockerConfig" type="IframeBlockerConfig">
+  Configuration for the iframe blocker.
+</ResponseField>
+
+<ResponseField name="user" type="User">
+  User information for linking consent to authenticated users.
+</ResponseField>
+
+<ResponseField name="overrides" type="Overrides">
+  Forcefully set values like country, region, language.
+</ResponseField>
+
+<ResponseField name="experimental_globalPrivacyControl" type="boolean">
+  Respect the Global Privacy Signal in opt-out jurisdictions.
+</ResponseField>
+
+### Script Management
+
+<ResponseField name="scripts" type="Script[]">
+  Array of script configurations to manage.
+</ResponseField>
+
+<ResponseField name="loadedScripts" type="Record<string, boolean>">
+  Map of currently loaded script IDs to their loaded state.
+</ResponseField>
+
+<ResponseField name="scriptIdMap" type="Record<string, string>">
+  Map of anonymized script IDs to their original IDs.
+</ResponseField>
+
+## Methods
+
+### Consent Management
+
+<ResponseField name="saveConsents" type="(type: 'all' | 'custom' | 'necessary') => void">
+  Saves the user's consent preferences.
+  
+  - `'all'` - Accept all consent types
+  - `'custom'` - Save selected consents
+  - `'necessary'` - Accept only necessary cookies
+  
+  ```typescript
+  // Accept all
+  store.getState().saveConsents('all');
+  
+  // Save custom selection
+  store.getState().setSelectedConsent('measurement', true);
+  store.getState().saveConsents('custom');
+  ```
+</ResponseField>
+
+<ResponseField name="setConsent" type="(name: AllConsentNames, value: boolean) => void">
+  Updates consent for a specific type and automatically saves it.
+  
+  ```typescript
+  store.getState().setConsent('measurement', true);
+  ```
+</ResponseField>
+
+<ResponseField name="setSelectedConsent" type="(name: AllConsentNames, value: boolean) => void">
+  Updates the selected consent state without saving. Use `saveConsents()` to persist.
+  
+  ```typescript
+  store.getState().setSelectedConsent('measurement', true);
+  store.getState().setSelectedConsent('marketing', false);
+  store.getState().saveConsents('custom');
+  ```
+</ResponseField>
+
+<ResponseField name="resetConsents" type="() => void">
+  Resets all consent preferences to their default values and clears storage.
+  
+  ```typescript
+  store.getState().resetConsents();
+  ```
+</ResponseField>
+
+### Consent Checking
+
+<ResponseField name="hasConsented" type="() => boolean">
+  Checks if the user has provided any form of consent.
+  
+  ```typescript
+  if (store.getState().hasConsented()) {
+    console.log('User has made a consent choice');
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="hasConsentFor" type="(consentType: AllConsentNames) => boolean">
+  Checks if consent has been given for a specific type.
+  
+  **Deprecated:** Use `has()` instead.
+  
+  ```typescript
+  // Deprecated
+  if (store.getState().hasConsentFor('measurement')) {
+    initializeAnalytics();
+  }
+  
+  // Use instead
+  if (store.getState().has('measurement')) {
+    initializeAnalytics();
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="has" type="<T extends AllConsentNames>(condition: HasCondition<T>) => boolean">
+  Evaluates whether current consent state satisfies the given condition.
+  
+  Supports:
+  - Simple consent check: `'measurement'`
+  - AND logic: `{ and: ['measurement', 'marketing'] }`
+  - OR logic: `{ or: ['measurement', 'marketing'] }`
+  - NOT logic: `{ not: 'measurement' }`
+  - Nested conditions: `{ and: ['necessary', { or: ['measurement', 'marketing'] }] }`
+  
+  ```typescript
+  // Simple check
+  if (store.getState().has('measurement')) {
+    initializeAnalytics();
+  }
+  
+  // Complex logic
+  if (store.getState().has({ and: ['measurement', 'marketing'] })) {
+    initializeAdvancedTracking();
+  }
+  
+  if (store.getState().has({ or: ['measurement', 'marketing'] })) {
+    initializeBasicTracking();
+  }
+  ```
+</ResponseField>
+
+### UI Control
+
+<ResponseField name="setShowPopup" type="(show: boolean, force?: boolean) => void">
+  Controls the visibility of the consent popup.
+  
+  ```typescript
+  // Show popup
+  store.getState().setShowPopup(true);
+  
+  // Force show (bypass validation)
+  store.getState().setShowPopup(true, true);
+  
+  // Hide popup
+  store.getState().setShowPopup(false);
+  ```
+</ResponseField>
+
+<ResponseField name="setIsPrivacyDialogOpen" type="(isOpen: boolean) => void">
+  Controls the visibility of the privacy dialog.
+  
+  ```typescript
+  store.getState().setIsPrivacyDialogOpen(true);
+  ```
+</ResponseField>
+
+### Configuration
+
+<ResponseField name="setGdprTypes" type="(types: AllConsentNames[]) => void">
+  Updates the active GDPR consent types.
+  
+  ```typescript
+  store.getState().setGdprTypes(['necessary', 'measurement', 'marketing']);
+  ```
+</ResponseField>
+
+<ResponseField name="setCallback" type="(name: keyof Callbacks, callback: Callback) => void">
+  Sets a callback for a specific consent event.
+  
+  ```typescript
+  store.getState().setCallback('onConsentSet', ({ preferences }) => {
+    console.log('Consent updated:', preferences);
+  });
+  ```
+</ResponseField>
+
+<ResponseField name="setLocationInfo" type="(location: LocationInfo | null) => void">
+  Updates the user's location information.
+  
+  ```typescript
+  store.getState().setLocationInfo({
+    countryCode: 'US',
+    regionCode: 'CA',
+    jurisdiction: 'CCPA',
+    jurisdictionMessage: 'California Consumer Privacy Act applies'
+  });
+  ```
+</ResponseField>
+
+<ResponseField name="setTranslationConfig" type="(config: TranslationConfig) => void">
+  Updates the translation configuration.
+  
+  ```typescript
+  store.getState().setTranslationConfig(newTranslations);
+  ```
+</ResponseField>
+
+<ResponseField name="setOverrides" type="(overrides: Overrides) => void">
+  Sets the overrides for country, region, or language.
+  
+  ```typescript
+  store.getState().setOverrides({ country: 'DE', language: 'de-DE' });
+  ```
+</ResponseField>
+
+### Data Fetching
+
+<ResponseField name="fetchConsentBannerInfo" type="() => Promise<ConsentBannerResponse | undefined>">
+  Fetches consent banner information from the API and updates the store.
+  
+  ```typescript
+  const bannerInfo = await store.getState().fetchConsentBannerInfo();
+  if (bannerInfo?.showConsentBanner) {
+    console.log('Show consent banner for jurisdiction:', bannerInfo.jurisdiction);
+  }
+  ```
+</ResponseField>
+
+### User Identification
+
+<ResponseField name="identifyUser" type="(user: User) => Promise<void>">
+  Identifies the user by setting their external ID. If the user has already consented, it updates the existing record.
+  
+  ```typescript
+  await store.getState().identifyUser({ id: 'user-123' });
+  ```
+</ResponseField>
+
+### Display Helpers
+
+<ResponseField name="getDisplayedConsents" type="() => ConsentType[]">
+  Retrieves the list of consent types that should be displayed based on active GDPR types.
+  
+  ```typescript
+  const displayedConsents = store.getState().getDisplayedConsents();
+  ```
+</ResponseField>
+
+### Script Management
+
+<ResponseField name="setScripts" type="(scripts: Script[]) => void">
+  Sets multiple script configurations.
+  
+  ```typescript
+  store.getState().setScripts([
+    {
+      id: 'google-analytics',
+      src: 'https://www.googletagmanager.com/gtag/js?id=GA_ID',
+      category: 'measurement'
+    }
+  ]);
+  ```
+</ResponseField>
+
+<ResponseField name="removeScript" type="(scriptId: string) => void">
+  Removes a script configuration from the store.
+  
+  ```typescript
+  store.getState().removeScript('google-analytics');
+  ```
+</ResponseField>
+
+<ResponseField name="updateScripts" type="() => { loaded: string[], unloaded: string[] }">
+  Updates scripts based on current consent state. Loads scripts with consent and unloads scripts without consent.
+  
+  ```typescript
+  const { loaded, unloaded } = store.getState().updateScripts();
+  console.log('Loaded:', loaded);
+  console.log('Unloaded:', unloaded);
+  ```
+</ResponseField>
+
+<ResponseField name="isScriptLoaded" type="(scriptId: string) => boolean">
+  Checks if a script is currently loaded.
+  
+  ```typescript
+  if (store.getState().isScriptLoaded('google-analytics')) {
+    console.log('Google Analytics is loaded');
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="getLoadedScriptIds" type="() => string[]">
+  Gets all currently loaded script IDs.
+  
+  ```typescript
+  const loadedScripts = store.getState().getLoadedScriptIds();
+  ```
+</ResponseField>
+
+### Iframe Blocker
+
+<ResponseField name="initializeIframeBlocker" type="() => void">
+  Initializes the iframe blocker instance.
+</ResponseField>
+
+<ResponseField name="updateIframeConsents" type="() => void">
+  Updates consents for the iframe blocker.
+</ResponseField>
+
+<ResponseField name="destroyIframeBlocker" type="() => void">
+  Destroys the iframe blocker instance.
+</ResponseField>
+
+<ResponseField name="updateConsentCategories" type="(newCategories: AllConsentNames[]) => void">
+  Updates the active GDPR consent types by merging with existing types.
+</ResponseField>
+
+## Examples
+
+### Basic Consent Management
+
+```typescript
+const store = createConsentManagerStore(client);
+
+// Check if user has consented
+if (!store.getState().hasConsented()) {
+  store.getState().setShowPopup(true);
+}
+
+// Accept all consents
+store.getState().saveConsents('all');
+
+// Custom consent selection
+store.getState().setSelectedConsent('measurement', true);
+store.getState().setSelectedConsent('marketing', false);
+store.getState().saveConsents('custom');
+```
+
+### Conditional Feature Loading
+
+```typescript
+const store = createConsentManagerStore(client);
+
+// Subscribe to consent changes
+store.subscribe((state) => {
+  // Initialize analytics if measurement consent is granted
+  if (state.has('measurement')) {
+    initializeAnalytics();
+  }
+  
+  // Initialize marketing tools if marketing consent is granted
+  if (state.has('marketing')) {
+    initializeMarketingPixels();
+  }
+  
+  // Complex condition
+  if (state.has({ and: ['measurement', 'marketing'] })) {
+    initializeAdvancedTracking();
+  }
+});
+```
+
+### User Identification
+
+```typescript
+const store = createConsentManagerStore(client);
+
+// Identify user after authentication
+onUserLogin(async (userId) => {
+  await store.getState().identifyUser({ id: userId });
+});
+```
+
+## Related
+
+- [createConsentManagerStore](/api/core/create-consent-store) - Create store instance
+- [Script Loader](/api/core/script-loader) - Dynamic script loading
+- [Types](/api/core/types) - Type definitions

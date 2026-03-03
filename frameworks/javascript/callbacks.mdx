@@ -1,0 +1,421 @@
+---
+title: 'Callbacks'
+description: 'React to consent lifecycle events with callback functions'
+---
+
+# Callbacks
+
+The c15t JavaScript SDK provides callback functions that allow you to react to consent-related events throughout the lifecycle of your application.
+
+## Quick Start
+
+Define callbacks when creating the store:
+
+```typescript
+import { createConsentManagerStore, configureConsentManager } from 'c15t';
+
+const manager = configureConsentManager({
+  backendURL: '/api/c15t',
+});
+
+const store = createConsentManagerStore(manager, {
+  callbacks: {
+    onBannerFetched: ({ showConsentBanner, jurisdiction, location }) => {
+      console.log('Banner fetched:', showConsentBanner);
+      console.log('User location:', location.countryCode);
+      console.log('Jurisdiction:', jurisdiction.code);
+    },
+    onConsentSet: ({ preferences }) => {
+      console.log('Consent updated:', preferences);
+    },
+    onError: ({ error }) => {
+      console.error('Consent error:', error);
+    },
+  },
+});
+```
+
+## Available Callbacks
+
+### onBannerFetched
+
+Called when the consent banner information is fetched from the backend.
+
+```typescript
+onBannerFetched?: (payload: OnBannerFetchedPayload) => void
+```
+
+<ParamField path="payload.showConsentBanner" type="boolean">
+  Whether the consent banner should be displayed to the user
+</ParamField>
+
+<ParamField path="payload.jurisdiction" type="JurisdictionInfo">
+  Information about the user's jurisdiction (e.g., GDPR, CCPA, NONE)
+</ParamField>
+
+<ParamField path="payload.location" type="{ countryCode: string | null, regionCode: string | null }">
+  User's detected location information
+</ParamField>
+
+<ParamField path="payload.translations" type="{ language: string, translations: Translations }">
+  Translation data returned from the backend
+</ParamField>
+
+See type definition at `src/types/callbacks.ts:17`
+
+**Example:**
+
+```typescript
+onBannerFetched: ({ showConsentBanner, jurisdiction, location, translations }) => {
+  if (showConsentBanner) {
+    // Show your consent banner UI
+    console.log(`Show banner for ${location.countryCode} under ${jurisdiction.code}`);
+  }
+  
+  // Log user's location
+  console.log('User location:', location.countryCode, location.regionCode);
+  
+  // Access fetched translations
+  console.log('Language:', translations.language);
+}
+```
+
+### onConsentSet
+
+Called whenever user consent is set or updated.
+
+```typescript
+onConsentSet?: (payload: OnConsentSetPayload) => void
+```
+
+<ParamField path="payload.preferences" type="ConsentState">
+  The current consent preferences for all categories
+</ParamField>
+
+See type definition at `src/types/callbacks.ts:29`
+
+<Note>
+  The `onConsentSet` callback is called immediately when set using `setCallback()` with the current consent state. It may also be called automatically in certain cases, such as when no jurisdiction is detected or when the store is initialized with default consents.
+</Note>
+
+**Example:**
+
+```typescript
+onConsentSet: ({ preferences }) => {
+  console.log('Consent state:', preferences);
+  
+  // Update your analytics based on consent
+  if (preferences.measurement) {
+    console.log('Enable analytics tracking');
+    // window.gtag('consent', 'update', { analytics_storage: 'granted' });
+  } else {
+    console.log('Disable analytics tracking');
+    // window.gtag('consent', 'update', { analytics_storage: 'denied' });
+  }
+  
+  // Update marketing tools
+  if (preferences.marketing) {
+    console.log('Enable marketing cookies');
+  }
+  
+  // Send consent to your backend
+  fetch('/api/log-consent', {
+    method: 'POST',
+    body: JSON.stringify({ preferences }),
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+```
+
+### onError
+
+Called when an error occurs during consent operations.
+
+```typescript
+onError?: (payload: OnErrorPayload) => void
+```
+
+<ParamField path="payload.error" type="string">
+  Error message describing what went wrong
+</ParamField>
+
+See type definition at `src/types/callbacks.ts:32`
+
+**Example:**
+
+```typescript
+onError: ({ error }) => {
+  console.error('Consent management error:', error);
+  
+  // Log to error tracking service
+  // Sentry.captureException(new Error(error));
+  
+  // Show user-friendly error message
+  // showNotification('Unable to save your preferences. Please try again.');
+}
+```
+
+## Setting Callbacks Dynamically
+
+You can set callbacks after the store is created:
+
+```typescript
+import type { OnConsentSetPayload } from 'c15t';
+
+// Set a callback dynamically
+store.getState().setCallback(
+  'onConsentSet',
+  ({ preferences }: OnConsentSetPayload) => {
+    console.log('Consent updated:', preferences);
+  }
+);
+
+// Set another callback
+store.getState().setCallback(
+  'onError',
+  ({ error }) => {
+    console.error('Error:', error);
+  }
+);
+```
+
+See `src/store.ts:581`
+
+<Note>
+  When setting the `onConsentSet` callback dynamically, it will be immediately called with the current consent state to prevent race conditions.
+</Note>
+
+<Note>
+  When setting the `onBannerFetched` callback after the banner has already been fetched, the callback will be immediately called with the stored banner data to prevent missing the event.
+</Note>
+
+## Callback Type Definitions
+
+```typescript
+type Callback<T = void> = (arg: T) => void;
+
+interface Callbacks {
+  onBannerFetched?: Callback<OnBannerFetchedPayload>;
+  onConsentSet?: Callback<OnConsentSetPayload>;
+  onError?: Callback<OnErrorPayload>;
+}
+
+interface OnBannerFetchedPayload {
+  showConsentBanner: boolean;
+  jurisdiction: JurisdictionInfo;
+  location: {
+    countryCode: string | null;
+    regionCode: string | null;
+  };
+  translations: {
+    language: string;
+    translations: Translations;
+  };
+}
+
+interface OnConsentSetPayload {
+  preferences: ConsentState;
+}
+
+interface OnErrorPayload {
+  error: string;
+}
+```
+
+See full type definitions at `src/types/callbacks.ts:8`
+
+## Practical Examples
+
+### Example 1: Analytics Integration
+
+```typescript
+const store = createConsentManagerStore(manager, {
+  callbacks: {
+    onConsentSet: ({ preferences }) => {
+      // Update Google Analytics consent mode
+      if (typeof window.gtag === 'function') {
+        window.gtag('consent', 'update', {
+          analytics_storage: preferences.measurement ? 'granted' : 'denied',
+          ad_storage: preferences.marketing ? 'granted' : 'denied',
+        });
+      }
+      
+      // Update Meta Pixel consent
+      if (typeof window.fbq === 'function' && preferences.marketing) {
+        window.fbq('consent', 'grant');
+      } else if (typeof window.fbq === 'function') {
+        window.fbq('consent', 'revoke');
+      }
+    },
+  },
+});
+```
+
+### Example 2: Region-Based UI Customization
+
+```typescript
+const store = createConsentManagerStore(manager, {
+  callbacks: {
+    onBannerFetched: ({ showConsentBanner, jurisdiction, location }) => {
+      // Customize UI based on jurisdiction
+      if (jurisdiction.code === 'GDPR') {
+        document.body.classList.add('gdpr-region');
+        // Show GDPR-specific messaging
+      } else if (jurisdiction.code === 'CCPA') {
+        document.body.classList.add('ccpa-region');
+        // Show CCPA-specific messaging
+      }
+      
+      // Track where users are coming from
+      console.log(`Visitor from ${location.countryCode}`);
+      
+      // Only show banner if needed
+      if (showConsentBanner) {
+        document.getElementById('consent-banner')?.classList.remove('hidden');
+      }
+    },
+  },
+});
+```
+
+### Example 3: Backend Logging
+
+```typescript
+const store = createConsentManagerStore(manager, {
+  callbacks: {
+    onConsentSet: async ({ preferences }) => {
+      // Log consent to your backend
+      try {
+        await fetch('/api/consent-log', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            timestamp: new Date().toISOString(),
+            preferences,
+            userAgent: navigator.userAgent,
+          }),
+        });
+      } catch (error) {
+        console.error('Failed to log consent:', error);
+      }
+    },
+    onError: ({ error }) => {
+      // Send errors to monitoring service
+      fetch('/api/error-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          error,
+          timestamp: new Date().toISOString(),
+        }),
+      });
+    },
+  },
+});
+```
+
+### Example 4: Custom State Management
+
+```typescript
+import { createConsentManagerStore } from 'c15t';
+
+// Your app's state management
+const appStore = {
+  consentGranted: false,
+  userRegion: null,
+};
+
+const store = createConsentManagerStore(manager, {
+  callbacks: {
+    onBannerFetched: ({ location, jurisdiction }) => {
+      // Update app state
+      appStore.userRegion = location.countryCode;
+    },
+    onConsentSet: ({ preferences }) => {
+      // Update app state
+      appStore.consentGranted = preferences.measurement || preferences.marketing;
+      
+      // Trigger re-render or state update
+      document.dispatchEvent(new CustomEvent('consent-updated', {
+        detail: { preferences }
+      }));
+    },
+  },
+});
+
+// Listen for consent updates
+document.addEventListener('consent-updated', (event) => {
+  console.log('App consent state updated:', event.detail.preferences);
+});
+```
+
+### Example 5: Conditional Feature Loading
+
+```typescript
+const store = createConsentManagerStore(manager, {
+  callbacks: {
+    onConsentSet: ({ preferences }) => {
+      // Load features based on consent
+      if (preferences.measurement) {
+        loadAnalyticsFeatures();
+      }
+      
+      if (preferences.marketing) {
+        loadMarketingFeatures();
+      }
+      
+      if (preferences.functionality) {
+        loadPersonalizationFeatures();
+      }
+    },
+  },
+});
+
+function loadAnalyticsFeatures() {
+  console.log('Loading analytics features...');
+  // Dynamic import or initialization
+}
+
+function loadMarketingFeatures() {
+  console.log('Loading marketing features...');
+  // Dynamic import or initialization
+}
+
+function loadPersonalizationFeatures() {
+  console.log('Loading personalization features...');
+  // Dynamic import or initialization
+}
+```
+
+## Accessing Callbacks from Store
+
+Retrieve current callbacks:
+
+```typescript
+const currentCallbacks = store.getState().callbacks;
+
+console.log('Current callbacks:', {
+  onBannerFetched: !!currentCallbacks.onBannerFetched,
+  onConsentSet: !!currentCallbacks.onConsentSet,
+  onError: !!currentCallbacks.onError,
+});
+```
+
+## Callback Execution Order
+
+1. **onBannerFetched**: Called after `fetchConsentBannerInfo()` completes
+2. **onConsentSet**: Called after `saveConsents()` completes, or when callback is set dynamically
+3. **onError**: Called whenever an error occurs during consent operations
+
+## Best Practices
+
+<Tip>
+  - Keep callbacks lightweight to avoid blocking the main thread
+  - Use async operations for network requests in callbacks
+  - Handle errors gracefully within callbacks
+  - Avoid infinite loops by not calling `saveConsents()` from `onConsentSet`
+</Tip>
+
+<Warning>
+  Do not call `saveConsents()` from within the `onConsentSet` callback, as this will create an infinite loop.
+</Warning>

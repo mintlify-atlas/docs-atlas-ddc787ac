@@ -1,0 +1,312 @@
+---
+title: 'Middleware'
+description: 'Next.js middleware integration for consent verification'
+icon: 'layer-group'
+---
+
+## Overview
+
+Next.js middleware utilities for verifying consent and protecting routes based on user consent status.
+
+<Warning>
+Middleware support is currently provided through the React package exports. Dedicated Next.js middleware helpers are coming soon.
+</Warning>
+
+## Current Usage
+
+While dedicated middleware is under development, you can verify consent in Next.js middleware using the backend client:
+
+```typescript middleware.ts
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+export async function middleware(request: NextRequest) {
+  const domain = request.headers.get('host') || 'example.com';
+  const subjectId = request.cookies.get('c15t_subject_id')?.value;
+  
+  // Verify consent with backend
+  const response = await fetch(`${process.env.C15T_BACKEND_URL}/consent/verify`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      subjectId,
+      domain,
+      type: 'cookie_banner',
+      preferences: ['measurement', 'marketing'],
+    }),
+  });
+  
+  const { isValid } = await response.json();
+  
+  if (!isValid && request.nextUrl.pathname !== '/consent-required') {
+    return NextResponse.redirect(new URL('/consent-required', request.url));
+  }
+  
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: '/protected/:path*',
+};
+```
+
+## Route Protection Patterns
+
+### Protect Specific Routes
+
+```typescript middleware.ts
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+const PROTECTED_PATHS = ['/analytics', '/marketing', '/personalized'];
+
+const REQUIRED_PURPOSES: Record<string, string[]> = {
+  '/analytics': ['measurement'],
+  '/marketing': ['marketing'],
+  '/personalized': ['measurement', 'marketing', 'functionality'],
+};
+
+export async function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+  
+  // Check if path requires consent
+  const isProtected = PROTECTED_PATHS.some(path => 
+    pathname.startsWith(path)
+  );
+  
+  if (!isProtected) {
+    return NextResponse.next();
+  }
+  
+  // Get required purposes for this path
+  const requiredPurposes = Object.entries(REQUIRED_PURPOSES).find(
+    ([path]) => pathname.startsWith(path)
+  )?.[1] || [];
+  
+  // Verify consent
+  const subjectId = request.cookies.get('c15t_subject_id')?.value;
+  const domain = request.headers.get('host') || 'example.com';
+  
+  const response = await fetch(`${process.env.C15T_BACKEND_URL}/consent/verify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      subjectId,
+      domain,
+      type: 'cookie_banner',
+      preferences: requiredPurposes,
+    }),
+  });
+  
+  const { isValid } = await response.json();
+  
+  if (!isValid) {
+    const url = new URL('/consent-required', request.url);
+    url.searchParams.set('required', requiredPurposes.join(','));
+    url.searchParams.set('return', pathname);
+    return NextResponse.redirect(url);
+  }
+  
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: ['/analytics/:path*', '/marketing/:path*', '/personalized/:path*'],
+};
+```
+
+### API Route Protection
+
+```typescript middleware.ts
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+export async function middleware(request: NextRequest) {
+  // Only protect API routes
+  if (!request.nextUrl.pathname.startsWith('/api/user-data')) {
+    return NextResponse.next();
+  }
+  
+  const subjectId = request.cookies.get('c15t_subject_id')?.value;
+  
+  if (!subjectId) {
+    return NextResponse.json(
+      { error: 'Subject ID required' },
+      { status: 401 }
+    );
+  }
+  
+  // Verify consent for data processing
+  const response = await fetch(`${process.env.C15T_BACKEND_URL}/consent/verify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      subjectId,
+      domain: request.headers.get('host'),
+      type: 'privacy_policy',
+    }),
+  });
+  
+  const { isValid } = await response.json();
+  
+  if (!isValid) {
+    return NextResponse.json(
+      { error: 'Consent required' },
+      { status: 403 }
+    );
+  }
+  
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: '/api/user-data/:path*',
+};
+```
+
+## Edge Runtime Support
+
+```typescript middleware.ts
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+export const config = {
+  runtime: 'edge',
+  matcher: '/protected/:path*',
+};
+
+export async function middleware(request: NextRequest) {
+  // Edge runtime compatible consent verification
+  const subjectId = request.cookies.get('c15t_subject_id')?.value;
+  
+  if (!subjectId) {
+    return NextResponse.redirect(new URL('/consent', request.url));
+  }
+  
+  // Verify with backend (edge-compatible)
+  const verifyUrl = new URL('/consent/verify', process.env.C15T_BACKEND_URL);
+  
+  const response = await fetch(verifyUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      subjectId,
+      domain: request.headers.get('host'),
+      type: 'cookie_banner',
+    }),
+  });
+  
+  const { isValid } = await response.json();
+  
+  if (!isValid) {
+    return NextResponse.redirect(new URL('/consent', request.url));
+  }
+  
+  return NextResponse.next();
+}
+```
+
+## Helper Functions
+
+### Consent Verification Helper
+
+```typescript lib/verify-consent.ts
+import type { NextRequest } from 'next/server';
+
+export async function verifyConsent(
+  request: NextRequest,
+  options: {
+    type: 'cookie_banner' | 'privacy_policy';
+    preferences?: string[];
+  }
+): Promise<{ isValid: boolean; subjectId?: string }> {
+  const subjectId = request.cookies.get('c15t_subject_id')?.value;
+  
+  if (!subjectId) {
+    return { isValid: false };
+  }
+  
+  const domain = request.headers.get('host') || 'example.com';
+  
+  const response = await fetch(`${process.env.C15T_BACKEND_URL}/consent/verify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      subjectId,
+      domain,
+      ...options,
+    }),
+  });
+  
+  const { isValid } = await response.json();
+  
+  return { isValid, subjectId };
+}
+```
+
+```typescript middleware.ts
+import { verifyConsent } from '@/lib/verify-consent';
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+export async function middleware(request: NextRequest) {
+  const { isValid } = await verifyConsent(request, {
+    type: 'cookie_banner',
+    preferences: ['measurement'],
+  });
+  
+  if (!isValid) {
+    return NextResponse.redirect(new URL('/consent', request.url));
+  }
+  
+  return NextResponse.next();
+}
+```
+
+## Environment Variables
+
+```bash .env.local
+# Backend URL for consent verification
+C15T_BACKEND_URL=http://localhost:3000/api/c15t
+
+# Optional: Custom consent cookie name
+C15T_COOKIE_NAME=c15t_subject_id
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Cache Verification" icon="database">
+    Cache consent verification results to reduce backend calls in middleware.
+  </Card>
+  
+  <Card title="Graceful Degradation" icon="circle-check">
+    Allow access if verification fails due to network issues, but log the error.
+  </Card>
+  
+  <Card title="Use Edge Runtime" icon="bolt">
+    Deploy middleware to edge for faster consent verification worldwide.
+  </Card>
+  
+  <Card title="Clear Error Messages" icon="message">
+    Provide clear messages when redirecting users to consent pages.
+  </Card>
+</CardGroup>
+
+## Upcoming Features
+
+<Info>
+Dedicated middleware helpers are planned for a future release, including:
+- `withConsentVerification()` HOC
+- `createConsentMiddleware()` factory
+- Built-in caching and error handling
+- TypeScript types for middleware config
+</Info>
+
+## Related
+
+- [Backend Verification](/api/backend/core#verify-consent)
+- [Server Components](/api/nextjs/server-components)
+- [Route Protection Guide](/guides/route-protection)

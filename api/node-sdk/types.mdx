@@ -1,0 +1,413 @@
+---
+title: Type Definitions
+description: TypeScript type definitions for the c15t Node SDK
+icon: brackets-curly
+---
+
+## Overview
+
+The c15t Node SDK is built with TypeScript-first design, providing comprehensive type definitions for all API interactions.
+
+## Client Types
+
+### `C15TClientOptions`
+
+Configuration options for initializing the c15t client.
+
+```typescript
+interface C15TClientOptions {
+  /**
+   * Base URL for the API server
+   * @example "https://api.example.com"
+   */
+  baseUrl: string;
+
+  /**
+   * Authentication token (if needed)
+   * @example "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+   */
+  token?: string;
+
+  /**
+   * Additional headers to include with each request
+   */
+  headers?: Record<string, string>;
+
+  /**
+   * Prefix path for API endpoints
+   * @default "/"
+   */
+  prefix?: string;
+}
+```
+
+## Consent Types
+
+### `PolicyType`
+
+The type of consent policy.
+
+```typescript
+type PolicyType =
+  | 'cookie_banner'
+  | 'privacy_policy'
+  | 'dpa'
+  | 'terms_and_conditions'
+  | 'marketing_communications'
+  | 'age_verification'
+  | 'other';
+```
+
+### `PostConsentInput`
+
+Input type for posting consent. This is a discriminated union based on the `type` field.
+
+#### Cookie Banner Consent
+
+```typescript
+interface CookieBannerConsent {
+  type: 'cookie_banner';
+  domain: string;
+  preferences: Record<string, boolean>;  // Required for cookie_banner
+  subjectId?: string;
+  externalSubjectId?: string;
+  identityProvider?: string;
+  metadata?: Record<string, unknown>;
+}
+```
+
+#### Policy-Based Consent
+
+```typescript
+interface PolicyBasedConsent {
+  type: 'privacy_policy' | 'dpa' | 'terms_and_conditions';
+  domain: string;
+  policyId?: string;
+  preferences?: Record<string, boolean>;
+  subjectId?: string;
+  externalSubjectId?: string;
+  identityProvider?: string;
+  metadata?: Record<string, unknown>;
+}
+```
+
+#### Other Consent Types
+
+```typescript
+interface OtherConsent {
+  type: 'marketing_communications' | 'age_verification' | 'other';
+  domain: string;
+  preferences?: Record<string, boolean>;
+  subjectId?: string;
+  externalSubjectId?: string;
+  identityProvider?: string;
+  metadata?: Record<string, unknown>;
+}
+```
+
+### `PostConsentResponse`
+
+```typescript
+interface PostConsentResponse {
+  id: string;
+  subjectId?: string;
+  externalSubjectId?: string;
+  domainId: string;
+  domain: string;
+  type: PolicyType;
+  status: string;
+  recordId: string;
+  metadata?: Record<string, unknown>;
+  givenAt: Date;
+}
+```
+
+### `VerifyConsentInput`
+
+```typescript
+interface VerifyConsentInput {
+  domain: string;
+  type: PolicyType;
+  subjectId?: string;
+  externalSubjectId?: string;
+  policyId?: string;
+  preferences?: string[];  // Array of purpose codes to verify
+}
+```
+
+### `VerifyConsentResponse`
+
+```typescript
+interface VerifyConsentResponse {
+  isValid: boolean;
+  reasons?: string[];
+  consent?: {
+    id: string;
+    purposeIds: string[];
+  };
+}
+```
+
+### `ShowBannerResponse`
+
+```typescript
+interface ShowBannerResponse {
+  showConsentBanner: boolean;
+  jurisdiction: JurisdictionInfo;
+  location: LocationInfo;
+  translations: TranslationInfo;
+  branding: 'c15t' | 'consent' | 'none';
+}
+
+interface JurisdictionInfo {
+  code: string;
+  name: string;
+  requiresConsent: boolean;
+  description?: string;
+}
+
+interface LocationInfo {
+  countryCode: string | null;
+  regionCode: string | null;
+}
+
+interface TranslationInfo {
+  language: string;
+  translations: {
+    common: {
+      acceptAll: string;
+      rejectAll: string;
+      customize: string;
+      save: string;
+    };
+    cookieBanner: {
+      title: string;
+      description: string;
+    };
+    consentManagerDialog: {
+      title: string;
+      description: string;
+    };
+    consentTypes: {
+      experience: { title: string; description: string };
+      functionality: { title: string; description: string };
+      marketing: { title: string; description: string };
+      measurement: { title: string; description: string };
+      necessary: { title: string; description: string };
+    };
+    frame?: {
+      title: string;
+      actionButton: string;
+    };
+    legalLinks?: {
+      privacyPolicy: string;
+      termsOfService: string;
+      cookiePolicy: string;
+    };
+  };
+}
+```
+
+### `IdentifyUserInput`
+
+```typescript
+interface IdentifyUserInput {
+  consentId: string;
+  externalId: string;
+  identityProvider?: string;
+}
+```
+
+### `IdentifyUserResponse`
+
+```typescript
+interface IdentifyUserResponse {
+  success: boolean;
+}
+```
+
+## Meta Types
+
+### `StatusResponse`
+
+```typescript
+interface StatusResponse {
+  status: 'ok' | 'error';
+  version: string;
+  timestamp: Date;
+  storage: {
+    type: string;
+    available: boolean;
+  };
+  client: {
+    ip: string | null;
+    userAgent: string | null;
+    region: {
+      countryCode: string | null;
+      regionCode: string | null;
+    };
+  };
+}
+```
+
+## Error Types
+
+All API methods can throw errors with the following structure:
+
+### API Error Structure
+
+```typescript
+interface APIError {
+  status: number;           // HTTP status code
+  error: string;            // Error message
+  data?: Record<string, any>;  // Additional error details
+}
+```
+
+### Common Error Codes
+
+#### Validation Errors
+
+- **`INPUT_VALIDATION_FAILED`** (422)
+  ```typescript
+  {
+    formErrors: string[];
+    fieldErrors: Record<string, string[]>;
+  }
+  ```
+
+#### Subject Errors
+
+- **`SUBJECT_NOT_FOUND`** (404)
+  ```typescript
+  {
+    subjectId?: string;
+    externalSubjectId?: string;
+  }
+  ```
+
+- **`SUBJECT_CREATION_FAILED`** (400)
+  ```typescript
+  {
+    subjectId?: string;
+    externalSubjectId?: string;
+  }
+  ```
+
+#### Domain Errors
+
+- **`DOMAIN_NOT_FOUND`** (404)
+  ```typescript
+  {
+    domain: string;
+  }
+  ```
+
+- **`DOMAIN_CREATION_FAILED`** (500)
+  ```typescript
+  {
+    domain: string;
+  }
+  ```
+
+#### Policy Errors
+
+- **`POLICY_NOT_FOUND`** (404)
+  ```typescript
+  {
+    policyId: string;
+    type: string;
+  }
+  ```
+
+- **`POLICY_INACTIVE`** (409)
+  ```typescript
+  {
+    policyId: string;
+    type: string;
+  }
+  ```
+
+- **`POLICY_CREATION_FAILED`** (500)
+  ```typescript
+  {
+    type: string;
+  }
+  ```
+
+#### Consent Errors
+
+- **`NO_CONSENT_FOUND`** (404)
+  ```typescript
+  {
+    policyId: string;
+    subjectId: string;
+    domainId: string;
+  }
+  ```
+
+- **`CONSENT_CREATION_FAILED`** (500)
+  ```typescript
+  {
+    subjectId: string;
+    domain: string;
+  }
+  ```
+
+- **`CONSENT_NOT_FOUND`** (404)
+  ```typescript
+  {
+    consentId: string;
+  }
+  ```
+
+- **`COOKIE_BANNER_PREFERENCES_REQUIRED`** (400)
+  ```typescript
+  {
+    type: 'cookie_banner';
+  }
+  ```
+
+## Usage Example
+
+```typescript
+import { c15tClient, type C15TClientOptions, type PostConsentInput } from '@c15t/node-sdk';
+
+// Client configuration
+const config: C15TClientOptions = {
+  baseUrl: 'https://api.c15t.com',
+  token: 'your-token',
+};
+
+const client = c15tClient(config);
+
+// Type-safe consent posting
+const consentData: PostConsentInput = {
+  type: 'cookie_banner',
+  domain: 'example.com',
+  preferences: {
+    marketing: true,
+    analytics: false,
+  },
+  externalSubjectId: 'user-123',
+};
+
+try {
+  const response = await client.consent.post(consentData);
+  console.log('Consent ID:', response.id);
+} catch (error) {
+  // Error is typed as APIError
+  console.error('Failed:', error);
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Client Setup" icon="plug" href="/api/node-sdk/client">
+    Initialize the SDK client
+  </Card>
+  <Card title="SDK Methods" icon="function" href="/api/node-sdk/methods">
+    Explore all available methods
+  </Card>
+</CardGroup>

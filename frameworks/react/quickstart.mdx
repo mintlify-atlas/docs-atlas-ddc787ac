@@ -1,0 +1,401 @@
+---
+title: "React Quickstart"
+description: "Get started with c15t React integration in minutes. Add GDPR-compliant cookie consent to your React application."
+icon: "react"
+---
+
+## Installation
+
+Install the c15t React package:
+
+<CodeGroup>
+
+```bash npm
+npm install @c15t/react
+```
+
+```bash pnpm
+pnpm add @c15t/react
+```
+
+```bash yarn
+yarn add @c15t/react
+```
+
+```bash bun
+bun add @c15t/react
+```
+
+</CodeGroup>
+
+## Quick Setup with CLI
+
+The fastest way to set up c15t in your React application:
+
+```bash
+pnpm dlx @c15t/cli generate
+```
+
+The CLI will:
+- Install necessary packages
+- Configure your c15t instance
+- Set up environment variables
+- Add consent management components to your app
+
+## Manual Setup
+
+### 1. Wrap Your App with ConsentManagerProvider
+
+The `ConsentManagerProvider` initializes the consent management system and provides context to all child components.
+
+```tsx App.tsx
+import { ConsentManagerProvider, CookieBanner, ConsentManagerDialog } from '@c15t/react';
+
+function App() {
+  return (
+    <ConsentManagerProvider
+      options={{
+        mode: 'c15t',
+        backendURL: '/api/c15t',
+      }}
+    >
+      <YourApp />
+      <CookieBanner />
+      <ConsentManagerDialog />
+    </ConsentManagerProvider>
+  );
+}
+```
+
+### 2. Configure Provider Options
+
+The `ConsentManagerProvider` accepts various configuration options:
+
+<Tabs>
+  <Tab title="c15t Mode">
+    Connect to a hosted or self-hosted c15t backend:
+
+    ```tsx
+    <ConsentManagerProvider
+      options={{
+        mode: 'c15t',
+        backendURL: '/api/c15t', // or 'https://your-c15t-instance.com'
+      }}
+    >
+      {children}
+    </ConsentManagerProvider>
+    ```
+  </Tab>
+
+  <Tab title="Offline Mode">
+    Run c15t entirely client-side without a backend:
+
+    ```tsx
+    <ConsentManagerProvider
+      options={{
+        mode: 'offline',
+        store: {
+          consentTypes: [
+            { name: 'necessary', required: true },
+            { name: 'analytics', required: false },
+            { name: 'marketing', required: false },
+          ],
+        },
+      }}
+    >
+      {children}
+    </ConsentManagerProvider>
+    ```
+  </Tab>
+
+  <Tab title="Custom Mode">
+    Implement your own backend handlers:
+
+    ```tsx
+    <ConsentManagerProvider
+      options={{
+        mode: 'custom',
+        endpointHandlers: {
+          fetchLocation: async () => ({ country: 'US', region: 'CA' }),
+          setConsent: async (data) => {
+            await fetch('/api/consent', {
+              method: 'POST',
+              body: JSON.stringify(data),
+            });
+          },
+          getConsent: async () => {
+            const res = await fetch('/api/consent');
+            return res.json();
+          },
+        },
+      }}
+    >
+      {children}
+    </ConsentManagerProvider>
+    ```
+  </Tab>
+</Tabs>
+
+### 3. Add UI Components
+
+Add the cookie banner and consent dialog components:
+
+```tsx
+import { CookieBanner, ConsentManagerDialog } from '@c15t/react';
+
+function App() {
+  return (
+    <ConsentManagerProvider options={options}>
+      <YourApp />
+      
+      {/* Cookie Banner - shows on first visit */}
+      <CookieBanner />
+      
+      {/* Consent Dialog - detailed preferences */}
+      <ConsentManagerDialog />
+    </ConsentManagerProvider>
+  );
+}
+```
+
+## Configuration Options
+
+The `ConsentManagerProvider` accepts comprehensive configuration through the `options` prop:
+
+<ParamField path="options.mode" type="'c15t' | 'offline' | 'custom'" required>
+  The mode of operation for the consent manager.
+</ParamField>
+
+<ParamField path="options.backendURL" type="string">
+  Backend URL for c15t mode. Defaults to `/api/c15t`.
+</ParamField>
+
+<ParamField path="options.enabled" type="boolean" default="true">
+  Whether c15t should be active. When `false`, all consents are treated as granted.
+</ParamField>
+
+<ParamField path="options.ignoreGeoLocation" type="boolean" default="false">
+  Whether to ignore geo location detection and always show the consent banner.
+</ParamField>
+
+<ParamField path="options.consentCategories" type="AllConsentNames[]" default="['necessary', 'marketing']">
+  Consent categories to show in the banner.
+</ParamField>
+
+<ParamField path="options.translations" type="Partial<TranslationConfig>">
+  Custom translations configuration. See [Translations](/frameworks/javascript/internationalization) for details.
+</ParamField>
+
+<ParamField path="options.callbacks" type="Callbacks">
+  Event callbacks for consent state changes:
+  - `onConsentSet`: Called when consent is saved
+  - `onConsentRejected`: Called when consent is rejected
+  - `onConsentAccepted`: Called when all consents are accepted
+</ParamField>
+
+<ParamField path="options.scripts" type="Script[]">
+  Scripts to dynamically load based on consent state. See [Script Loader](/frameworks/javascript/script-loader).
+</ParamField>
+
+<ParamField path="options.legalLinks" type="LegalLinks">
+  Links to legal documents (privacy policy, terms of service, etc.).
+</ParamField>
+
+<ParamField path="options.user" type="User">
+  User information for consent tracking.
+</ParamField>
+
+<ParamField path="options.storageConfig" type="StorageConfig">
+  Storage configuration options:
+  - `storageKey`: Custom storage key (default: `'c15t_consent'`)
+  - `storage`: Custom storage implementation
+</ParamField>
+
+### React-Specific Options
+
+The `options.react` property contains React-specific UI configuration:
+
+<ParamField path="options.react.theme" type="object">
+  Visual theme to apply to components. See [Customization](/frameworks/react/components).
+</ParamField>
+
+<ParamField path="options.react.disableAnimation" type="boolean" default="false">
+  Whether to disable animations.
+</ParamField>
+
+<ParamField path="options.react.scrollLock" type="boolean" default="false">
+  Whether to lock scroll when dialogs are open.
+</ParamField>
+
+<ParamField path="options.react.trapFocus" type="boolean" default="true">
+  Whether to trap focus within dialogs.
+</ParamField>
+
+<ParamField path="options.react.colorScheme" type="'light' | 'dark' | 'system'">
+  Color scheme preference. Forces light, dark, or system theme. Defaults to detecting `.dark` class on document.
+</ParamField>
+
+<ParamField path="options.react.noStyle" type="boolean" default="false">
+  Whether to disable default styles entirely.
+</ParamField>
+
+## Framework Integration
+
+<Tabs>
+  <Tab title="Next.js">
+    ### App Router
+
+    Create a provider component with `'use client'` directive:
+
+    ```tsx app/providers.tsx
+    'use client';
+
+    import { ConsentManagerProvider, CookieBanner, ConsentManagerDialog } from '@c15t/react';
+
+    export function Providers({ children }: { children: React.ReactNode }) {
+      return (
+        <ConsentManagerProvider
+          options={{
+            mode: 'c15t',
+            backendURL: '/api/c15t',
+          }}
+        >
+          {children}
+          <CookieBanner />
+          <ConsentManagerDialog />
+        </ConsentManagerProvider>
+      );
+    }
+    ```
+
+    Then use it in your root layout:
+
+    ```tsx app/layout.tsx
+    import { Providers } from './providers';
+
+    export default function RootLayout({ children }) {
+      return (
+        <html>
+          <body>
+            <Providers>{children}</Providers>
+          </body>
+        </html>
+      );
+    }
+    ```
+
+    ### Pages Router
+
+    ```tsx pages/_app.tsx
+    import { ConsentManagerProvider, CookieBanner, ConsentManagerDialog } from '@c15t/react';
+
+    export default function App({ Component, pageProps }) {
+      return (
+        <ConsentManagerProvider
+          options={{
+            mode: 'c15t',
+            backendURL: '/api/c15t',
+          }}
+        >
+          <Component {...pageProps} />
+          <CookieBanner />
+          <ConsentManagerDialog />
+        </ConsentManagerProvider>
+      );
+    }
+    ```
+  </Tab>
+
+  <Tab title="Vite">
+    ```tsx src/main.tsx
+    import React from 'react';
+    import ReactDOM from 'react-dom/client';
+    import { ConsentManagerProvider, CookieBanner, ConsentManagerDialog } from '@c15t/react';
+    import App from './App';
+
+    ReactDOM.createRoot(document.getElementById('root')!).render(
+      <React.StrictMode>
+        <ConsentManagerProvider
+          options={{
+            mode: 'c15t',
+            backendURL: '/api/c15t',
+          }}
+        >
+          <App />
+          <CookieBanner />
+          <ConsentManagerDialog />
+        </ConsentManagerProvider>
+      </React.StrictMode>
+    );
+    ```
+  </Tab>
+
+  <Tab title="Create React App">
+    ```tsx src/index.tsx
+    import React from 'react';
+    import ReactDOM from 'react-dom/client';
+    import { ConsentManagerProvider, CookieBanner, ConsentManagerDialog } from '@c15t/react';
+    import App from './App';
+
+    const root = ReactDOM.createRoot(document.getElementById('root')!);
+    root.render(
+      <React.StrictMode>
+        <ConsentManagerProvider
+          options={{
+            mode: 'c15t',
+            backendURL: '/api/c15t',
+          }}
+        >
+          <App />
+          <CookieBanner />
+          <ConsentManagerDialog />
+        </ConsentManagerProvider>
+      </React.StrictMode>
+    );
+    ```
+  </Tab>
+</Tabs>
+
+## Using Consent State
+
+Access and manage consent state anywhere in your app using the `useConsentManager` hook:
+
+```tsx
+import { useConsentManager } from '@c15t/react';
+
+function MyComponent() {
+  const { consents, hasConsent, setConsent } = useConsentManager();
+
+  // Check if user has given consent for a specific category
+  const canTrack = hasConsent('analytics');
+
+  // Update consent programmatically
+  const enableAnalytics = () => {
+    setConsent({ analytics: true });
+  };
+
+  return (
+    <div>
+      <p>Analytics enabled: {canTrack ? 'Yes' : 'No'}</p>
+      <button onClick={enableAnalyics}>Enable Analytics</button>
+    </div>
+  );
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Components" icon="puzzle-piece" href="/frameworks/react/components">
+    Explore all available UI components and their customization options.
+  </Card>
+  <Card title="Hooks" icon="hook" href="/frameworks/react/hooks">
+    Learn about React hooks for accessing and managing consent state.
+  </Card>
+  <Card title="Headless Mode" icon="code" href="/frameworks/react/headless">
+    Build completely custom UI with headless components.
+  </Card>
+  <Card title="Script Loader" icon="file-code" href="/frameworks/javascript/script-loader">
+    Dynamically load tracking scripts based on consent.
+  </Card>
+</CardGroup>

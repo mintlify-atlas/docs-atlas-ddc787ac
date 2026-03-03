@@ -1,0 +1,290 @@
+---
+title: createConsentManagerStore
+description: Create and configure a consent management store instance
+---
+
+## Overview
+
+The `createConsentManagerStore` function creates a new consent manager store instance that handles consent state, persistence, script loading, and compliance management.
+
+## Function Signature
+
+```typescript
+function createConsentManagerStore(
+  manager: ConsentManagerInterface,
+  options?: StoreOptions
+): Store<PrivacyConsentState>
+```
+
+## Parameters
+
+<ParamField path="manager" type="ConsentManagerInterface" required>
+  The consent manager client instance created with `createClient()`.
+</ParamField>
+
+<ParamField path="options" type="StoreOptions">
+  Configuration options for the store.
+  
+  <Expandable title="StoreOptions properties">
+    <ParamField path="namespace" type="string" default="c15tStore">
+      Custom namespace for the store instance. The store will be accessible via `window[namespace]`.
+    </ParamField>
+    
+    <ParamField path="config" type="object">
+      Information about the consent manager package.
+      
+      <Expandable title="config properties">
+        <ParamField path="pkg" type="string" required>
+          Package name
+        </ParamField>
+        <ParamField path="version" type="string" required>
+          Package version
+        </ParamField>
+        <ParamField path="mode" type="string" required>
+          Runtime mode (e.g., 'production', 'development')
+        </ParamField>
+        <ParamField path="meta" type="Record<string, unknown>">
+          Additional metadata
+        </ParamField>
+      </Expandable>
+    </ParamField>
+    
+    <ParamField path="initialGdprTypes" type="AllConsentNames[]">
+      Initial GDPR consent types to activate. These determine which consent categories are available.
+    </ParamField>
+    
+    <ParamField path="enabled" type="boolean" default="true">
+      Globally enable or disable the consent manager. When `false`, all consents are treated as granted and no backend calls are made.
+    </ParamField>
+    
+    <ParamField path="ignoreGeoLocation" type="boolean" default="false">
+      Whether to ignore geo location detection and always show the consent banner.
+    </ParamField>
+    
+    <ParamField path="scripts" type="Script[]">
+      Array of scripts to dynamically load based on consent state. See the [Script Loader](/api/core/script-loader) documentation.
+    </ParamField>
+    
+    <ParamField path="iframeBlockerConfig" type="IframeBlockerConfig">
+      Configuration for the iframe blocker that blocks iframes based on consent.
+    </ParamField>
+    
+    <ParamField path="storageConfig" type="StorageConfig">
+      Configure how consent data is stored in localStorage and cookies.
+      
+      <Expandable title="StorageConfig properties">
+        <ParamField path="storageKey" type="string" default="c15t">
+          Custom storage key for localStorage and cookies.
+        </ParamField>
+        <ParamField path="crossSubdomain" type="boolean" default="false">
+          Enable cross-subdomain cookies by default. When true, cookies work across all subdomains.
+        </ParamField>
+        <ParamField path="defaultDomain" type="string">
+          Custom default domain for cookies (e.g., '.example.com'). Overrides `crossSubdomain` if set.
+        </ParamField>
+        <ParamField path="defaultExpiryDays" type="number" default="365">
+          Default cookie expiration in days.
+        </ParamField>
+      </Expandable>
+    </ParamField>
+    
+    <ParamField path="translationConfig" type="TranslationConfig">
+      Translation configuration for the consent manager UI.
+    </ParamField>
+    
+    <ParamField path="callbacks" type="Callbacks">
+      Event callbacks for consent actions.
+      
+      <Expandable title="Callbacks properties">
+        <ParamField path="onBannerFetched" type="(payload: OnBannerFetchedPayload) => void">
+          Called when the consent banner information is fetched from the backend.
+        </ParamField>
+        <ParamField path="onConsentSet" type="(payload: OnConsentSetPayload) => void">
+          Called when consent preferences are saved. Also called immediately when the store is initialized.
+        </ParamField>
+        <ParamField path="onError" type="(payload: OnErrorPayload) => void">
+          Called when an error occurs during consent operations.
+        </ParamField>
+      </Expandable>
+    </ParamField>
+    
+    <ParamField path="legalLinks" type="LegalLinks">
+      Display links to legal documents (privacy policy, terms of service, etc.) in the consent UI.
+    </ParamField>
+    
+    <ParamField path="user" type="User">
+      User information for linking consent to authenticated users.
+      
+      <Expandable title="User properties">
+        <ParamField path="id" type="string" required>
+          Your internal user ID from your authentication provider.
+        </ParamField>
+      </Expandable>
+    </ParamField>
+    
+    <ParamField path="overrides" type="Overrides">
+      Forcefully override detected values like country, region, and language.
+      
+      <Expandable title="Overrides properties">
+        <ParamField path="country" type="string">
+          Country code (e.g., 'DE', 'US')
+        </ParamField>
+        <ParamField path="region" type="string">
+          Region code (e.g., 'BE', 'CA')
+        </ParamField>
+        <ParamField path="language" type="string">
+          Language code (e.g., 'de-DE', 'en-US')
+        </ParamField>
+      </Expandable>
+    </ParamField>
+    
+    <ParamField path="experimental_globalPrivacyControl" type="boolean" default="false">
+      Respect the Global Privacy Control signal in opt-out jurisdictions like California (CCPA).
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Returns
+
+<ResponseField name="store" type="Store<PrivacyConsentState>">
+  A Zustand store instance with consent management functionality. See [PrivacyConsentState](/api/core/consent-state) for available state and methods.
+</ResponseField>
+
+## Examples
+
+### Basic Usage
+
+```typescript
+import { createClient, createConsentManagerStore } from '@c15t/core';
+
+const client = createClient({ apiKey: 'your-api-key' });
+const store = createConsentManagerStore(client);
+
+// Access state
+const state = store.getState();
+console.log('Current consents:', state.consents);
+
+// Subscribe to changes
+const unsubscribe = store.subscribe(
+  (state) => console.log('Consent updated:', state.consents)
+);
+```
+
+### With Script Loader
+
+```typescript
+import { createClient, createConsentManagerStore } from '@c15t/core';
+
+const client = createClient({ apiKey: 'your-api-key' });
+
+const store = createConsentManagerStore(client, {
+  scripts: [
+    {
+      id: 'google-analytics',
+      src: 'https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID',
+      category: 'measurement',
+      async: true,
+      onLoad: () => {
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'GA_MEASUREMENT_ID');
+      }
+    },
+    {
+      id: 'facebook-pixel',
+      src: 'https://connect.facebook.net/en_US/fbevents.js',
+      category: 'marketing',
+      async: true,
+      onLoad: () => {
+        fbq('init', 'PIXEL_ID');
+        fbq('track', 'PageView');
+      }
+    }
+  ]
+});
+```
+
+### With Callbacks
+
+```typescript
+import { createClient, createConsentManagerStore } from '@c15t/core';
+
+const client = createClient({ apiKey: 'your-api-key' });
+
+const store = createConsentManagerStore(client, {
+  callbacks: {
+    onBannerFetched: ({ showConsentBanner, jurisdiction, location }) => {
+      console.log('Should show banner:', showConsentBanner);
+      console.log('Jurisdiction:', jurisdiction);
+      console.log('Location:', location);
+    },
+    onConsentSet: ({ preferences }) => {
+      console.log('Consent preferences:', preferences);
+      
+      // Initialize analytics if measurement consent is granted
+      if (preferences.measurement) {
+        initializeAnalytics();
+      }
+    },
+    onError: ({ error }) => {
+      console.error('Consent error:', error);
+    }
+  }
+});
+```
+
+### With Storage Configuration
+
+```typescript
+import { createClient, createConsentManagerStore } from '@c15t/core';
+
+const client = createClient({ apiKey: 'your-api-key' });
+
+const store = createConsentManagerStore(client, {
+  storageConfig: {
+    storageKey: 'my-consent',
+    crossSubdomain: true,  // Share consent across subdomains
+    defaultExpiryDays: 180  // Expire after 6 months
+  }
+});
+```
+
+### With User Identification
+
+```typescript
+import { createClient, createConsentManagerStore } from '@c15t/core';
+
+const client = createClient({ apiKey: 'your-api-key' });
+
+const store = createConsentManagerStore(client, {
+  user: {
+    id: 'user-123'  // Your internal user ID
+  }
+});
+
+// Or identify later
+store.getState().identifyUser({ id: 'user-123' });
+```
+
+### Custom Namespace
+
+```typescript
+import { createClient, createConsentManagerStore } from '@c15t/core';
+
+const client = createClient({ apiKey: 'your-api-key' });
+
+const store = createConsentManagerStore(client, {
+  namespace: 'MyAppConsent'
+});
+
+// Access from window
+const state = window.MyAppConsent.getState();
+```
+
+## Related
+
+- [PrivacyConsentState](/api/core/consent-state) - Store state and methods
+- [Script Loader](/api/core/script-loader) - Dynamic script loading
+- [Cookie Storage](/api/core/cookie-storage) - Consent persistence
+- [Types](/api/core/types) - Type definitions

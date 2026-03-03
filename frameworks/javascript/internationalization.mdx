@@ -1,0 +1,490 @@
+---
+title: 'Internationalization'
+description: 'Add multi-language support to your consent management UI'
+---
+
+# Internationalization
+
+The c15t JavaScript SDK includes built-in internationalization (i18n) support, allowing you to display consent UI in multiple languages.
+
+## Quick Start
+
+Configure translations when creating the store:
+
+```typescript
+import { createConsentManagerStore, configureConsentManager } from 'c15t';
+import { enTranslations, deTranslations } from '@c15t/translations';
+
+const manager = configureConsentManager({
+  backendURL: '/api/c15t',
+});
+
+const store = createConsentManagerStore(manager, {
+  translationConfig: {
+    translations: {
+      en: enTranslations,
+      de: deTranslations,
+    },
+    defaultLanguage: 'en',
+    disableAutoLanguageSwitch: false,
+  },
+});
+```
+
+## Translation Configuration
+
+### TranslationConfig
+
+<ParamField path="translations" type="Record<string, Translations>" required>
+  Object mapping language codes to translation objects
+</ParamField>
+
+<ParamField path="defaultLanguage" type="string" required>
+  Default language code to use (e.g., `'en'`, `'de'`, `'fr'`)
+</ParamField>
+
+<ParamField path="disableAutoLanguageSwitch" type="boolean" default="false">
+  When `false`, automatically switches language based on browser settings
+</ParamField>
+
+See `src/index.ts:16`
+
+## Built-in Translations
+
+The `@c15t/translations` package includes translations for common languages:
+
+```typescript
+import {
+  enTranslations,
+  deTranslations,
+  frTranslations,
+  esTranslations,
+  itTranslations,
+  ptTranslations,
+  nlTranslations,
+  plTranslations,
+  // ... more languages
+} from '@c15t/translations';
+```
+
+## Translation Structure
+
+Translations are organized into sections:
+
+```typescript
+interface Translations {
+  common: CommonTranslations;
+  cookieBanner: CookieBannerTranslations;
+  consentManager: ConsentManagerDialogTranslations;
+  consentTypes: ConsentTypesTranslations;
+  legalLinks: LegalLinksTranslations;
+}
+```
+
+See type definitions at `src/index.ts:9`
+
+### Common Translations
+
+General UI text:
+
+```typescript
+interface CommonTranslations {
+  accept: string;           // "Accept"
+  decline: string;          // "Decline"
+  close: string;            // "Close"
+  save: string;             // "Save"
+  savePreferences: string;  // "Save Preferences"
+  // ...
+}
+```
+
+### Cookie Banner Translations
+
+Consent banner-specific text:
+
+```typescript
+interface CookieBannerTranslations {
+  title: string;            // "Cookie Consent"
+  description: string;      // "We use cookies to..."
+  acceptAll: string;        // "Accept All"
+  rejectAll: string;        // "Reject All"
+  customize: string;        // "Customize"
+  // ...
+}
+```
+
+### Consent Type Translations
+
+Descriptions for each consent category:
+
+```typescript
+interface ConsentTypesTranslations {
+  necessary: ConsentTypeTranslations;
+  functionality: ConsentTypeTranslations;
+  measurement: ConsentTypeTranslations;
+  marketing: ConsentTypeTranslations;
+  experience: ConsentTypeTranslations;
+}
+
+interface ConsentTypeTranslations {
+  name: string;             // "Analytics"
+  description: string;      // "Help us improve..."
+}
+```
+
+## Custom Translations
+
+Create custom translations for your application:
+
+```typescript
+import type { Translations } from 'c15t';
+
+const customEnglishTranslations: Translations = {
+  common: {
+    accept: 'I Agree',
+    decline: 'No Thanks',
+    save: 'Save My Choices',
+    close: 'Close',
+    savePreferences: 'Save Preferences',
+  },
+  cookieBanner: {
+    title: 'We Value Your Privacy',
+    description: 'This website uses cookies to ensure you get the best experience.',
+    acceptAll: 'Accept All Cookies',
+    rejectAll: 'Reject Optional Cookies',
+    customize: 'Manage Preferences',
+  },
+  consentManager: {
+    title: 'Privacy Settings',
+    description: 'Control how we use cookies and collect data.',
+    // ... other fields
+  },
+  consentTypes: {
+    necessary: {
+      name: 'Essential Cookies',
+      description: 'Required for the website to function properly.',
+    },
+    measurement: {
+      name: 'Analytics Cookies',
+      description: 'Help us understand how visitors use our website.',
+    },
+    marketing: {
+      name: 'Marketing Cookies',
+      description: 'Used to show you relevant advertisements.',
+    },
+    functionality: {
+      name: 'Functional Cookies',
+      description: 'Enable enhanced functionality and personalization.',
+    },
+    experience: {
+      name: 'Experience Cookies',
+      description: 'Remember your preferences and settings.',
+    },
+  },
+  legalLinks: {
+    privacyPolicy: 'Privacy Policy',
+    termsOfService: 'Terms of Service',
+    cookiePolicy: 'Cookie Policy',
+    imprint: 'Imprint',
+  },
+};
+```
+
+## Merging Translations
+
+Merge custom translations with built-in translations:
+
+```typescript
+import { deepMergeTranslations, enTranslations } from 'c15t';
+
+const customTranslations = {
+  cookieBanner: {
+    title: 'Custom Title',
+    description: 'Custom description',
+  },
+};
+
+const mergedTranslations = deepMergeTranslations(
+  enTranslations,
+  customTranslations
+);
+
+const store = createConsentManagerStore(manager, {
+  translationConfig: {
+    translations: {
+      en: mergedTranslations,
+    },
+    defaultLanguage: 'en',
+  },
+});
+```
+
+See `src/index.ts:21`
+
+## Detecting Browser Language
+
+Automatically detect the user's browser language:
+
+```typescript
+import { detectBrowserLanguage } from 'c15t';
+
+const browserLanguage = detectBrowserLanguage();
+console.log('Browser language:', browserLanguage); // e.g., "en", "de", "fr"
+
+// Use detected language as default
+const store = createConsentManagerStore(manager, {
+  translationConfig: {
+    translations: {
+      en: enTranslations,
+      de: deTranslations,
+      fr: frTranslations,
+    },
+    defaultLanguage: browserLanguage || 'en',
+  },
+});
+```
+
+See `src/index.ts:22`
+
+## Preparing Translation Config
+
+Use the `prepareTranslationConfig` utility to merge and prepare translations:
+
+```typescript
+import { prepareTranslationConfig, enTranslations } from 'c15t';
+
+const translationConfig = prepareTranslationConfig({
+  translations: {
+    en: enTranslations,
+  },
+  defaultLanguage: 'en',
+});
+
+const store = createConsentManagerStore(manager, {
+  translationConfig,
+});
+```
+
+See `src/index.ts:24`
+
+## Dynamic Language Switching
+
+Update translations at runtime:
+
+```typescript
+import { deTranslations, frTranslations } from '@c15t/translations';
+
+// Switch to German
+store.getState().setTranslationConfig({
+  translations: {
+    de: deTranslations,
+  },
+  defaultLanguage: 'de',
+  disableAutoLanguageSwitch: false,
+});
+
+// Switch to French
+store.getState().setTranslationConfig({
+  translations: {
+    fr: frTranslations,
+  },
+  defaultLanguage: 'fr',
+  disableAutoLanguageSwitch: false,
+});
+```
+
+See `src/store.ts:755`
+
+## Multi-Language Setup
+
+Support multiple languages simultaneously:
+
+```typescript
+import {
+  enTranslations,
+  deTranslations,
+  frTranslations,
+  esTranslations,
+} from '@c15t/translations';
+
+const store = createConsentManagerStore(manager, {
+  translationConfig: {
+    translations: {
+      en: enTranslations,
+      de: deTranslations,
+      fr: frTranslations,
+      es: esTranslations,
+    },
+    defaultLanguage: 'en',
+    disableAutoLanguageSwitch: false, // Auto-detect user language
+  },
+});
+```
+
+## Automatic Language Detection
+
+By default, c15t automatically detects the user's browser language:
+
+```typescript
+const store = createConsentManagerStore(manager, {
+  translationConfig: {
+    translations: {
+      en: enTranslations,
+      de: deTranslations,
+    },
+    defaultLanguage: 'en',
+    disableAutoLanguageSwitch: false, // Enable auto-detection
+  },
+});
+
+// c15t will use German translations if the browser is set to German
+// Falls back to English if the browser language is not supported
+```
+
+## Disable Auto-Detection
+
+Force a specific language regardless of browser settings:
+
+```typescript
+const store = createConsentManagerStore(manager, {
+  translationConfig: {
+    translations: {
+      en: enTranslations,
+      de: deTranslations,
+    },
+    defaultLanguage: 'en',
+    disableAutoLanguageSwitch: true, // Always use default language
+  },
+});
+```
+
+## Translation Utility Functions
+
+### deepMergeTranslations
+
+Deep merge translation objects:
+
+```typescript
+function deepMergeTranslations(
+  base: Translations,
+  override: Partial<Translations>
+): Translations
+```
+
+### detectBrowserLanguage
+
+Detect the user's browser language:
+
+```typescript
+function detectBrowserLanguage(): string
+```
+
+### mergeTranslationConfigs
+
+Merge multiple translation configurations:
+
+```typescript
+function mergeTranslationConfigs(
+  ...configs: Partial<TranslationConfig>[]
+): TranslationConfig
+```
+
+### prepareTranslationConfig
+
+Prepare a translation configuration with defaults:
+
+```typescript
+function prepareTranslationConfig(
+  config: Partial<TranslationConfig>
+): TranslationConfig
+```
+
+See exports at `src/index.ts:20`
+
+## Default Translation Config
+
+The SDK provides a default configuration:
+
+```typescript
+import { defaultTranslationConfig } from 'c15t';
+
+console.log(defaultTranslationConfig);
+// {
+//   translations: { en: enTranslations },
+//   defaultLanguage: 'en',
+//   disableAutoLanguageSwitch: false,
+// }
+```
+
+See `src/translations/index.ts:4`
+
+## Example: Multi-Language E-commerce Site
+
+```typescript
+import {
+  configureConsentManager,
+  createConsentManagerStore,
+  detectBrowserLanguage,
+  deepMergeTranslations,
+} from 'c15t';
+import {
+  enTranslations,
+  deTranslations,
+  frTranslations,
+} from '@c15t/translations';
+
+const manager = configureConsentManager({
+  backendURL: '/api/c15t',
+});
+
+// Customize translations for your brand
+const customEnTranslations = deepMergeTranslations(enTranslations, {
+  cookieBanner: {
+    title: 'Welcome to Our Store',
+    description: 'We use cookies to personalize your shopping experience.',
+  },
+});
+
+const customDeTranslations = deepMergeTranslations(deTranslations, {
+  cookieBanner: {
+    title: 'Willkommen in unserem Shop',
+    description: 'Wir verwenden Cookies, um Ihr Einkaufserlebnis zu personalisieren.',
+  },
+});
+
+const customFrTranslations = deepMergeTranslations(frTranslations, {
+  cookieBanner: {
+    title: 'Bienvenue dans notre boutique',
+    description: 'Nous utilisons des cookies pour personnaliser votre expérience d\'achat.',
+  },
+});
+
+const store = createConsentManagerStore(manager, {
+  translationConfig: {
+    translations: {
+      en: customEnTranslations,
+      de: customDeTranslations,
+      fr: customFrTranslations,
+    },
+    defaultLanguage: detectBrowserLanguage() || 'en',
+    disableAutoLanguageSwitch: false,
+  },
+});
+
+// Add language switcher UI
+const languageSwitcher = document.querySelector('#language-switcher');
+languageSwitcher?.addEventListener('change', (e) => {
+  const language = (e.target as HTMLSelectElement).value;
+  const translations = {
+    en: customEnTranslations,
+    de: customDeTranslations,
+    fr: customFrTranslations,
+  };
+  
+  store.getState().setTranslationConfig({
+    translations: { [language]: translations[language] },
+    defaultLanguage: language,
+    disableAutoLanguageSwitch: true,
+  });
+});
+```

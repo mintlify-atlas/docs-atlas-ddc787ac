@@ -1,0 +1,234 @@
+---
+title: CookieBanner
+description: Accessible cookie consent banner component for GDPR compliance.
+---
+
+The `CookieBanner` component displays a cookie consent banner that allows users to accept, reject, or customize their consent preferences. It's designed to be GDPR-compliant and fully accessible.
+
+## Import
+
+```tsx
+import { CookieBanner } from '@c15t/react';
+```
+
+## Usage
+
+```tsx
+import { ConsentManagerProvider, CookieBanner } from '@c15t/react';
+
+function App() {
+  return (
+    <ConsentManagerProvider options={{ mode: 'c15t' }}>
+      <CookieBanner />
+      {/* Your app content */}
+    </ConsentManagerProvider>
+  );
+}
+```
+
+## Props
+
+<ParamField path="theme" type="CookieBannerTheme">
+  Custom styles to apply to the banner and its child components. Allows for deep customization of the banner's appearance while maintaining accessibility.
+</ParamField>
+
+<ParamField path="noStyle" type="boolean">
+  When true, removes all default styling from the component. Useful for implementing completely custom designs.
+  
+  **Default:** `false`
+</ParamField>
+
+<ParamField path="title" type="ReactNode">
+  Content to display as the banner's title. Supports string or ReactNode for rich content.
+</ParamField>
+
+<ParamField path="description" type="ReactNode">
+  Content to display as the banner's description. Supports string or ReactNode for rich content.
+</ParamField>
+
+<ParamField path="rejectButtonText" type="ReactNode">
+  Content to display on the reject button. Required by GDPR for explicit consent rejection.
+</ParamField>
+
+<ParamField path="customizeButtonText" type="ReactNode">
+  Content to display on the customize button. Opens detailed consent preferences.
+</ParamField>
+
+<ParamField path="acceptButtonText" type="ReactNode">
+  Content to display on the accept button. Primary action for accepting cookie preferences.
+</ParamField>
+
+<ParamField path="scrollLock" type="boolean">
+  When true, the cookie banner will lock the scroll of the page.
+  
+  **Default:** `false`
+</ParamField>
+
+<ParamField path="trapFocus" type="boolean">
+  When true, the cookie banner will trap focus for accessibility.
+  
+  **Default:** `true`
+</ParamField>
+
+<ParamField path="disableAnimation" type="boolean">
+  When true, disables the entrance/exit animations. Useful for environments where animations are not desired.
+  
+  **Default:** `false`
+</ParamField>
+
+<ParamField path="legalLinks" type="Array<string> | null">
+  Controls which legal links to display:
+  - `undefined` (default): Shows all available legal links
+  - `null`: Explicitly hides all legal links
+  - Array of keys: Shows only the specified legal links
+  
+  **Note:** You must set the legal links in the ConsentManagerProvider options.
+  
+  **Example:**
+  ```tsx
+  // Show all links
+  <CookieBanner legalLinks={undefined} />
+  
+  // Show no links
+  <CookieBanner legalLinks={null} />
+  
+  // Show only privacy policy
+  <CookieBanner legalLinks={['privacyPolicy']} />
+  ```
+</ParamField>
+
+## Examples
+
+### Basic Usage
+
+```tsx
+import { ConsentManagerProvider, CookieBanner } from '@c15t/react';
+
+function App() {
+  return (
+    <ConsentManagerProvider options={{ mode: 'c15t' }}>
+      <CookieBanner />
+    </ConsentManagerProvider>
+  );
+}
+```
+
+### Custom Text
+
+```tsx
+import { CookieBanner } from '@c15t/react';
+
+function App() {
+  return (
+    <CookieBanner
+      title="We value your privacy"
+      description="We use cookies to enhance your experience. Choose your preferences below."
+      acceptButtonText="Accept All"
+      rejectButtonText="Reject All"
+      customizeButtonText="Manage Preferences"
+    />
+  );
+}
+```
+
+### With Custom Styling
+
+```tsx
+import { CookieBanner } from '@c15t/react';
+
+function App() {
+  return (
+    <CookieBanner
+      theme={{
+        banner: {
+          root: {
+            backgroundColor: '#1a1a1a',
+            color: '#ffffff',
+          },
+          card: {
+            borderRadius: '12px',
+            padding: '24px',
+          },
+        },
+      }}
+    />
+  );
+}
+```
+
+### With Legal Links
+
+```tsx
+import { ConsentManagerProvider, CookieBanner } from '@c15t/react';
+
+function App() {
+  return (
+    <ConsentManagerProvider
+      options={{
+        mode: 'c15t',
+        legalLinks: {
+          privacyPolicy: 'https://example.com/privacy',
+          termsOfService: 'https://example.com/terms',
+          cookiePolicy: 'https://example.com/cookies',
+        },
+      }}
+    >
+      <CookieBanner legalLinks={['privacyPolicy', 'cookiePolicy']} />
+    </ConsentManagerProvider>
+  );
+}
+```
+
+### Disable Animations
+
+```tsx
+import { CookieBanner } from '@c15t/react';
+
+function App() {
+  return (
+    <CookieBanner disableAnimation />
+  );
+}
+```
+
+### With Scroll Lock
+
+```tsx
+import { CookieBanner } from '@c15t/react';
+
+function App() {
+  return (
+    <CookieBanner scrollLock trapFocus />
+  );
+}
+```
+
+## Accessibility
+
+The `CookieBanner` component is designed with accessibility in mind:
+
+- Proper ARIA labels and roles
+- Keyboard navigation support
+- Focus management with optional focus trapping
+- Screen reader friendly
+- Semantic HTML structure
+
+## Type Definitions
+
+```tsx
+import type { CookieBannerProps } from '@c15t/react';
+
+interface CookieBannerProps {
+  theme?: CookieBannerTheme;
+  noStyle?: boolean;
+  title?: ReactNode;
+  description?: ReactNode;
+  rejectButtonText?: ReactNode;
+  customizeButtonText?: ReactNode;
+  acceptButtonText?: ReactNode;
+  scrollLock?: boolean;
+  trapFocus?: boolean;
+  disableAnimation?: boolean;
+  legalLinks?: Array<string> | null;
+}
+```

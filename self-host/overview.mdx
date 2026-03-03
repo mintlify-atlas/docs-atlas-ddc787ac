@@ -1,0 +1,118 @@
+---
+title: Self-Hosting Overview
+description: Learn how to self-host the c15t backend for complete control over your consent management infrastructure
+---
+
+# Self-Hosting c15t Backend
+
+c15t provides a powerful, self-hostable consent management backend that you can deploy on your own infrastructure. This gives you complete control over your data, compliance requirements, and deployment environment.
+
+## Why Self-Host?
+
+- **Data Sovereignty**: Keep all consent data on your own infrastructure
+- **Compliance**: Meet specific regulatory requirements for data residency
+- **Customization**: Full control over configuration and deployment
+- **Privacy**: No third-party data processing
+- **Cost Control**: Optimize infrastructure costs for your scale
+
+## Architecture
+
+The c15t backend is built with:
+
+- **Language**: TypeScript/Node.js
+- **Runtime**: Node.js 18.17.0+ or Bun
+- **API Framework**: oRPC with OpenAPI support
+- **Database Support**: Multiple adapters for flexibility
+- **Deployment**: Framework-agnostic (works with Express, Next.js, Bun, etc.)
+
+## Available Versions
+
+### Version 2 (Current)
+
+The latest version with improved architecture and FumaDB adapters:
+
+```typescript
+import { c15tInstance } from '@c15t/backend/v2';
+```
+
+- Modern FumaDB adapter system
+- Simplified configuration
+- Better TypeScript support
+- Enhanced performance
+
+### Version 1 (Legacy)
+
+The original version, now deprecated:
+
+```typescript
+import { c15tInstance } from '@c15t/backend';
+```
+
+<Warning>
+Version 1 is deprecated and will be removed in the next major release. Please migrate to v2.
+View the [migration guide](/self-host/v2/quickstart) for details.
+</Warning>
+
+## Quick Links
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/self-host/v2/quickstart">
+    Get started with self-hosting in minutes
+  </Card>
+  <Card title="Configuration" icon="gear" href="/self-host/v2/configuration">
+    Configure your c15t backend instance
+  </Card>
+  <Card title="Database Adapters" icon="database" href="/self-host/v2/database-adapters">
+    Choose and configure your database
+  </Card>
+  <Card title="Deployment" icon="cloud" href="/self-host/v2/deployment">
+    Deploy to production environments
+  </Card>
+</CardGroup>
+
+## Features
+
+### Consent Management
+- Track and manage user consent preferences
+- Support for GDPR, CCPA, LGPD compliance
+- Version-controlled consent policies
+- Audit logging for all consent events
+
+### Geo-Location
+- Automatic detection of user jurisdiction
+- Show region-specific consent banners
+- Configurable geo-location services
+
+### Multi-Domain Support
+- Manage consent across multiple domains
+- Subdomain handling
+- Domain-specific policies
+
+### Server-Side Translation
+- Reduce banner bundle size
+- 40+ languages supported
+- Custom translation overrides
+
+### Webhooks & Integrations
+- Real-time consent event webhooks
+- Integration with analytics platforms
+- Custom event handlers
+
+## Support
+
+Need help with self-hosting?
+
+- **Documentation**: You're reading it!
+- **Discord**: Join our [community](https://c15t.link/discord)
+- **GitHub**: Open an [issue](https://github.com/c15t/c15t/issues)
+- **Email**: [support@consent.io](mailto:support@consent.io)
+
+## Cloud Alternative
+
+Don't want to self-host? Use [consent.io](https://consent.io) for a fully managed solution with the same features, plus:
+
+- Automatic scaling
+- Global CDN
+- 99.9% uptime SLA
+- Professional support
+- Automatic updates

@@ -1,0 +1,269 @@
+---
+title: "Google Tag Manager"
+description: "Integrate Google Tag Manager with consent mode support"
+icon: "google"
+---
+
+## Overview
+
+Google Tag Manager (GTM) integration with built-in Google Consent Mode v2 support. This integration automatically maps c15t consent states to Google's consent categories.
+
+<Info>
+  GTM is categorized as **necessary** by default since you control which scripts load through Tag Manager. We recommend managing scripts directly with c15t instead.
+</Info>
+
+## Installation
+
+<CodeGroup>
+```bash npm
+npm install @c15t/scripts c15t
+```
+
+```bash yarn
+yarn add @c15t/scripts c15t
+```
+
+```bash pnpm
+pnpm add @c15t/scripts c15t
+```
+
+```bash bun
+bun add @c15t/scripts c15t
+```
+</CodeGroup>
+
+## Basic usage
+
+<CodeGroup>
+```typescript React
+import { loadScripts } from 'c15t';
+import { googleTagManager } from '@c15t/scripts/google-tag-manager';
+import { useEffect } from 'react';
+
+export function App() {
+  useEffect(() => {
+    const gtmScript = googleTagManager({
+      id: 'GTM-XXXXXXX',
+    });
+
+    loadScripts([gtmScript], {
+      consents: {
+        necessary: true,
+        functionality: false,
+        measurement: false,
+        marketing: false,
+        experience: false,
+      },
+    });
+  }, []);
+
+  return <div>Your app</div>;
+}
+```
+
+```typescript Next.js
+import { loadScripts } from 'c15t';
+import { googleTagManager } from '@c15t/scripts/google-tag-manager';
+import { useEffect } from 'react';
+
+export default function RootLayout({ children }) {
+  useEffect(() => {
+    const gtmScript = googleTagManager({
+      id: 'GTM-XXXXXXX',
+    });
+
+    loadScripts([gtmScript], {
+      consents: {
+        necessary: true,
+        functionality: false,
+        measurement: false,
+        marketing: false,
+        experience: false,
+      },
+    });
+  }, []);
+
+  return <html><body>{children}</body></html>;
+}
+```
+
+```typescript Vanilla JS
+import { loadScripts } from 'c15t';
+import { googleTagManager } from '@c15t/scripts/google-tag-manager';
+
+const gtmScript = googleTagManager({
+  id: 'GTM-XXXXXXX',
+});
+
+loadScripts([gtmScript], {
+  consents: {
+    necessary: true,
+    functionality: false,
+    measurement: false,
+    marketing: false,
+    experience: false,
+  },
+});
+```
+</CodeGroup>
+
+## Configuration
+
+### Options
+
+<ParamField path="id" type="string" required>
+  Your Google Tag Manager container ID. Begins with `GTM-`.
+  
+  **Example**: `GTM-1234XXX`
+</ParamField>
+
+<ParamField path="updateEventName" type="string" default="consent-update">
+  Custom event name triggered when consent is updated. Use this as a trigger in GTM.
+  
+  **Example**: `consent-update`
+</ParamField>
+
+<ParamField path="script" type="Partial<Script>">
+  Override or extend default script values.
+  
+  **Defaults**:
+  - `id`: `'google-tag-manager'`
+  - `src`: `https://www.googletagmanager.com/gtm.js?id=${id}`
+  - `category`: `'necessary'`
+  - `alwaysLoad`: `true`
+  - `async`: `true`
+</ParamField>
+
+## Google Consent Mode mapping
+
+The integration automatically maps c15t consent states to Google Consent Mode v2:
+
+| c15t Consent | Google Consent Categories |
+|--------------|---------------------------|
+| `necessary` | `security_storage` |
+| `functionality` | `functionality_storage` |
+| `measurement` | `analytics_storage` |
+| `marketing` | `ad_storage`, `ad_user_data`, `ad_personalization` |
+| `experience` | `personalization_storage` |
+
+## Advanced usage
+
+### Custom update event
+
+Use a custom event name to trigger tags in GTM when consent changes:
+
+```typescript
+const gtmScript = googleTagManager({
+  id: 'GTM-XXXXXXX',
+  updateEventName: 'user_consent_updated',
+});
+```
+
+Then in GTM, create a Custom Event trigger with event name `user_consent_updated`.
+
+### Override script category
+
+If you want GTM to only load with specific consent:
+
+```typescript
+const gtmScript = googleTagManager({
+  id: 'GTM-XXXXXXX',
+  script: {
+    category: 'marketing', // Only load when marketing consent is granted
+  },
+});
+```
+
+### Custom callbacks
+
+Add custom logic to the script lifecycle:
+
+```typescript
+const gtmScript = googleTagManager({
+  id: 'GTM-XXXXXXX',
+  script: {
+    onLoad: ({ hasConsent }) => {
+      console.log('GTM loaded with consent:', hasConsent);
+    },
+    onConsentChange: ({ consents }) => {
+      console.log('Consent updated:', consents);
+      // Push custom event to dataLayer
+      window.dataLayer?.push({
+        event: 'custom_consent_update',
+        consents,
+      });
+    },
+  },
+});
+```
+
+### Using with consent manager
+
+Integrate with c15t's consent manager for automatic consent handling:
+
+```typescript
+import { createConsentManagerStore } from 'c15t';
+import { loadScripts } from 'c15t';
+import { googleTagManager } from '@c15t/scripts/google-tag-manager';
+
+const store = createConsentManagerStore({
+  config: {
+    projectId: 'your-project-id',
+  },
+});
+
+const gtmScript = googleTagManager({
+  id: 'GTM-XXXXXXX',
+});
+
+// Scripts update automatically when consent changes
+store.subscribe((state) => {
+  loadScripts([gtmScript], {
+    consents: state.consents,
+  });
+});
+```
+
+## How it works
+
+1. **Before script loads**: Creates initialization script with consent defaults (all denied)
+2. **On load**: Pushes `gtm.start` and `gtm.js` events to dataLayer
+3. **On consent change**: Updates consent via `gtag('consent', 'update', ...)` and triggers custom event
+4. **On delete**: Removes initialization script from DOM
+
+<Warning>
+  The GTM script itself always loads (as `necessary`). Control individual tracking scripts through GTM's consent mode triggers or by managing them directly with c15t.
+</Warning>
+
+## TypeScript
+
+Full TypeScript support with type inference:
+
+```typescript
+import type { Script } from 'c15t';
+import { googleTagManager } from '@c15t/scripts/google-tag-manager';
+import type { GoogleTagManagerOptions } from '@c15t/scripts/google-tag-manager';
+
+const options: GoogleTagManagerOptions = {
+  id: 'GTM-XXXXXXX',
+  updateEventName: 'consent-update',
+};
+
+const script: Script = googleTagManager(options);
+```
+
+## Resources
+
+<CardGroup cols={2}>
+  <Card title="Google Consent Mode" icon="google" href="https://developers.google.com/tag-platform/security/concepts/consent-mode">
+    Learn about Google's consent mode v2
+  </Card>
+  
+  <Card title="GTM Documentation" icon="book" href="https://developers.google.com/tag-platform/tag-manager">
+    Official Google Tag Manager documentation
+  </Card>
+  
+  <Card title="Source Code" icon="github" href="https://github.com/c15t/c15t/blob/main/packages/scripts/src/google-tag-manager.ts">
+    View the integration source code
+  </Card>
+</CardGroup>

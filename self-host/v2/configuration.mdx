@@ -1,0 +1,393 @@
+---
+title: Configuration
+description: Complete reference for configuring your c15t backend instance
+---
+
+# Configuration Reference
+
+Learn about all available configuration options for the c15t backend.
+
+## Basic Configuration
+
+The minimal configuration requires a database adapter and trusted origins:
+
+```typescript
+import { c15tInstance } from '@c15t/backend/v2';
+import { kyselyAdapter } from '@c15t/backend/v2/db/adapters/kysely';
+
+const c15t = c15tInstance({
+  adapter: kyselyAdapter(db),
+  trustedOrigins: ['https://yourdomain.com'],
+});
+```
+
+## Configuration Options
+
+### Required Options
+
+#### `adapter`
+
+**Type**: `FumaDB Adapter`
+
+The database adapter for storing consent data. See [Database Adapters](/self-host/v2/database-adapters) for details.
+
+```typescript
+import { kyselyAdapter } from '@c15t/backend/v2/db/adapters/kysely';
+
+const config = {
+  adapter: kyselyAdapter(db),
+};
+```
+
+#### `trustedOrigins`
+
+**Type**: `string[]`
+
+List of origins allowed to make requests to your API. Used for CORS configuration.
+
+```typescript
+const config = {
+  trustedOrigins: [
+    'http://localhost:3000',
+    'https://yourdomain.com',
+    'https://www.yourdomain.com',
+  ],
+};
+```
+
+Supports:
+- Exact domain matches
+- Wildcard subdomains: `https://*.yourdomain.com`
+- Development origins: `http://localhost:*`
+
+### Optional Options
+
+#### `appName`
+
+**Type**: `string`  
+**Default**: `"c15t"`
+
+A friendly name for your application, used in logs and telemetry.
+
+```typescript
+const config = {
+  appName: 'My Consent Manager',
+};
+```
+
+#### `basePath`
+
+**Type**: `string`  
+**Default**: `"/"`
+
+The base path where your API is mounted.
+
+```typescript
+const config = {
+  basePath: '/api/consent',
+};
+```
+
+#### `logger`
+
+**Type**: `LoggerOptions`
+
+Configure logging for your instance.
+
+```typescript
+import { createLogger } from '@c15t/logger';
+
+const config = {
+  logger: {
+    level: 'info', // 'debug' | 'info' | 'warn' | 'error'
+    pretty: true, // Enable pretty printing in development
+  },
+};
+```
+
+Or use a custom logger:
+
+```typescript
+const config = {
+  logger: createLogger({
+    level: 'debug',
+    transport: {
+      target: 'pino-pretty',
+      options: {
+        colorize: true,
+      },
+    },
+  }),
+};
+```
+
+## Advanced Configuration
+
+Advanced options are nested under the `advanced` key:
+
+```typescript
+const config = {
+  advanced: {
+    // Advanced options here
+  },
+};
+```
+
+### `advanced.disableGeoLocation`
+
+**Type**: `boolean`  
+**Default**: `false`
+
+Disable automatic geo-location detection. When disabled, the consent banner will always be shown.
+
+```typescript
+const config = {
+  advanced: {
+    disableGeoLocation: true,
+  },
+};
+```
+
+### `advanced.branding`
+
+**Type**: `'c15t' | 'consent' | 'none'`  
+**Default**: `'c15t'`
+
+Control branding shown in the consent banner.
+
+```typescript
+const config = {
+  advanced: {
+    branding: 'none', // Hide branding
+  },
+};
+```
+
+### `advanced.customTranslations`
+
+**Type**: `Record<string, Partial<Translations>>`
+
+Override or extend default translations.
+
+```typescript
+const config = {
+  advanced: {
+    customTranslations: {
+      en: {
+        banner: {
+          title: 'Cookie Preferences',
+          description: 'We use cookies to enhance your experience.',
+        },
+      },
+      es: {
+        banner: {
+          title: 'Preferencias de cookies',
+          description: 'Usamos cookies para mejorar su experiencia.',
+        },
+      },
+    },
+  },
+};
+```
+
+### `advanced.openapi`
+
+Configure OpenAPI documentation.
+
+```typescript
+const config = {
+  advanced: {
+    openapi: {
+      enabled: true, // Enable/disable API docs
+      specPath: '/spec.json', // Path to OpenAPI spec
+      docsPath: '/docs', // Path to docs UI
+      options: {
+        title: 'My Consent API',
+        version: '1.0.0',
+        description: 'Consent management API',
+      },
+      customUiTemplate: '<html>...</html>', // Custom docs UI
+    },
+  },
+};
+```
+
+### `advanced.telemetry`
+
+Configure OpenTelemetry for observability.
+
+```typescript
+import { trace } from '@opentelemetry/api';
+
+const config = {
+  advanced: {
+    telemetry: {
+      disabled: false, // Disable telemetry
+      tracer: trace.getTracer('my-app'),
+      defaultAttributes: {
+        service: 'consent-api',
+        environment: 'production',
+      },
+    },
+  },
+};
+```
+
+### `advanced.ipAddress`
+
+Configure IP address tracking.
+
+```typescript
+const config = {
+  advanced: {
+    ipAddress: {
+      disableIpTracking: false, // Disable IP tracking
+      ipAddressHeaders: [
+        'x-forwarded-for',
+        'x-real-ip',
+        'cf-connecting-ip',
+      ],
+    },
+  },
+};
+```
+
+## Environment Variables
+
+You can use environment variables for sensitive configuration:
+
+```typescript .env
+DATABASE_URL=postgresql://user:password@localhost:5432/consent_db
+TRUSTED_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
+LOG_LEVEL=info
+BASE_PATH=/api/consent
+```
+
+Load them in your configuration:
+
+```typescript c15t.config.ts
+import { defineConfig } from '@c15t/backend/v2/define-config';
+import { kyselyAdapter } from '@c15t/backend/v2/db/adapters/kysely';
+import { Kysely, PostgresDialect } from 'kysely';
+import { Pool } from 'pg';
+
+const db = new Kysely({
+  dialect: new PostgresDialect({
+    pool: new Pool({
+      connectionString: process.env.DATABASE_URL,
+    }),
+  }),
+});
+
+export default defineConfig({
+  adapter: kyselyAdapter(db),
+  trustedOrigins: process.env.TRUSTED_ORIGINS?.split(',') || [],
+  basePath: process.env.BASE_PATH || '/api/consent',
+  logger: {
+    level: (process.env.LOG_LEVEL as any) || 'info',
+  },
+});
+```
+
+<Note>
+When using Bun, environment variables from `.env` files are automatically loaded. For Node.js, use a package like `dotenv`.
+</Note>
+
+## Complete Example
+
+Here's a comprehensive configuration example:
+
+```typescript c15t.config.ts
+import { defineConfig } from '@c15t/backend/v2/define-config';
+import { kyselyAdapter } from '@c15t/backend/v2/db/adapters/kysely';
+import { Kysely, PostgresDialect } from 'kysely';
+import { Pool } from 'pg';
+
+const db = new Kysely({
+  dialect: new PostgresDialect({
+    pool: new Pool({
+      host: process.env.DB_HOST || 'localhost',
+      port: Number(process.env.DB_PORT) || 5432,
+      database: process.env.DB_NAME || 'consent_db',
+      user: process.env.DB_USER || 'postgres',
+      password: process.env.DB_PASSWORD,
+      max: 20,
+    }),
+  }),
+});
+
+export default defineConfig({
+  adapter: kyselyAdapter(db),
+  trustedOrigins: [
+    'http://localhost:3000',
+    'https://yourdomain.com',
+    'https://*.yourdomain.com',
+  ],
+  appName: 'MyApp Consent Manager',
+  basePath: '/api/consent',
+  logger: {
+    level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+    pretty: process.env.NODE_ENV !== 'production',
+  },
+  advanced: {
+    disableGeoLocation: false,
+    branding: 'none',
+    customTranslations: {
+      en: {
+        banner: {
+          title: 'Cookie Consent',
+          description: 'We value your privacy',
+        },
+      },
+    },
+    openapi: {
+      enabled: true,
+      specPath: '/spec.json',
+      docsPath: '/docs',
+      options: {
+        title: 'Consent Management API',
+        version: '1.0.0',
+      },
+    },
+    telemetry: {
+      disabled: process.env.NODE_ENV === 'development',
+      defaultAttributes: {
+        environment: process.env.NODE_ENV || 'development',
+      },
+    },
+    ipAddress: {
+      disableIpTracking: false,
+      ipAddressHeaders: [
+        'x-forwarded-for',
+        'x-real-ip',
+        'cf-connecting-ip',
+      ],
+    },
+  },
+});
+```
+
+## Type Definitions
+
+The c15t backend is fully typed with TypeScript:
+
+```typescript
+import type { C15TOptions, C15TInstance } from '@c15t/backend/v2';
+
+const config: C15TOptions = {
+  // Your configuration with full type support
+};
+
+const c15t: C15TInstance = c15tInstance(config);
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Database Adapters" icon="database" href="/self-host/v2/database-adapters">
+    Learn about database adapter options
+  </Card>
+  <Card title="Deployment" icon="cloud" href="/self-host/v2/deployment">
+    Deploy to production
+  </Card>
+</CardGroup>

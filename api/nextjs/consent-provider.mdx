@@ -1,0 +1,225 @@
+---
+title: 'ConsentManagerProvider'
+description: 'Next.js-specific consent manager provider component with server-side rendering support'
+icon: 'react'
+---
+
+## Overview
+
+The `ConsentManagerProvider` is a Next.js-specific wrapper around the React consent manager that provides server-side rendering support and automatic initial data fetching.
+
+<Info>
+This component is optimized for Next.js App Router and automatically handles server-side data fetching.
+</Info>
+
+## Import
+
+```tsx
+import { ConsentManagerProvider } from '@c15t/nextjs';
+```
+
+## Component API
+
+### ConsentManagerProvider
+
+<ParamField path="options" type="AppDirectoryConsentManagerProviderProps['options']" required>
+  Configuration options for the consent manager.
+  
+  <Expandable title="options properties">
+    <ParamField path="mode" type="'c15t' | 'offline' | 'custom'" required>
+      The mode in which to run the consent manager:
+      - `c15t`: Connects to c15t backend for full functionality
+      - `offline`: Works without backend connection
+      - `custom`: Custom implementation
+    </ParamField>
+    
+    <ParamField path="backendURL" type="string">
+      The URL of the c15t backend API. Required when `mode` is `'c15t'`.
+      
+      ```tsx
+      backendURL: '/api/c15t'
+      ```
+    </ParamField>
+    
+    <ParamField path="overrides" type="object">
+      Override default consent configurations.
+      
+      <Expandable title="overrides properties">
+        <ParamField path="domain" type="string">
+          Override the domain for consent records.
+        </ParamField>
+        
+        <ParamField path="policies" type="ConsentPolicy[]">
+          Override default consent policies.
+        </ParamField>
+        
+        <ParamField path="purposes" type="ConsentPurpose[]">
+          Override default consent purposes.
+        </ParamField>
+      </Expandable>
+    </ParamField>
+    
+    <ParamField path="react" type="object">
+      React-specific configuration options.
+      
+      <Expandable title="react properties">
+        <ParamField path="theme" type="Theme">
+          Custom theme configuration for the consent UI.
+        </ParamField>
+        
+        <ParamField path="position" type="'bottom' | 'top'">
+          Position of the consent banner on the screen.
+        </ParamField>
+      </Expandable>
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField path="children" type="React.ReactNode" required>
+  The child components to render within the consent manager context.
+</ParamField>
+
+## Usage
+
+### App Router (Server Component)
+
+```tsx app/layout.tsx
+import { ConsentManagerProvider } from '@c15t/nextjs';
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en">
+      <body>
+        <ConsentManagerProvider
+          options={{
+            mode: 'c15t',
+            backendURL: '/api/c15t',
+            react: {
+              theme: {
+                primaryColor: '#3b82f6',
+              },
+            },
+          }}
+        >
+          {children}
+        </ConsentManagerProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+### With Domain Override
+
+```tsx
+<ConsentManagerProvider
+  options={{
+    mode: 'c15t',
+    backendURL: '/api/c15t',
+    overrides: {
+      domain: 'example.com',
+    },
+  }}
+>
+  {children}
+</ConsentManagerProvider>
+```
+
+### Offline Mode
+
+```tsx
+<ConsentManagerProvider
+  options={{
+    mode: 'offline',
+    overrides: {
+      policies: [
+        {
+          id: 'cookie-policy',
+          type: 'cookie_banner',
+          name: 'Cookie Policy',
+          version: '1.0.0',
+        },
+      ],
+      purposes: [
+        {
+          code: 'necessary',
+          name: 'Necessary',
+          description: 'Required for the website to function',
+        },
+      ],
+    },
+  }}
+>
+  {children}
+</ConsentManagerProvider>
+```
+
+## Type Definitions
+
+### AppDirectoryConsentManagerProviderProps
+
+```typescript
+type AppDirectoryConsentManagerProviderProps = Omit<
+  ReactConsentManagerProviderProps,
+  'options'
+> & {
+  options: Omit<
+    ReactConsentManagerProviderProps['options'],
+    'callbacks' | 'scripts'
+  >;
+};
+```
+
+<Note>
+The Next.js provider omits `callbacks` and `scripts` from the React provider to ensure compatibility with server-side rendering.
+</Note>
+
+## Server-Side Features
+
+### Automatic Initial Data Fetching
+
+In `c15t` mode, the provider automatically fetches initial consent data on the server:
+
+- Reads request headers using Next.js `headers()`
+- Fetches consent configuration from the backend
+- Hydrates the client with initial data
+- Prevents client-side flash of unstyled content
+
+### Header Processing
+
+The provider automatically processes the following headers:
+
+- `x-forwarded-for`: Client IP address
+- `cf-ipcountry`: Cloudflare country code
+- `x-vercel-ip-country`: Vercel country detection
+- `user-agent`: Client user agent
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Place at Root" icon="layer-group">
+    Add the provider at the root layout level to ensure all pages have access to consent state.
+  </Card>
+  
+  <Card title="Configure Backend URL" icon="server">
+    Use environment variables for the backend URL to support different environments.
+  </Card>
+  
+  <Card title="Use Overrides Sparingly" icon="sliders">
+    Only use overrides when you need to customize default behavior for specific pages.
+  </Card>
+  
+  <Card title="Test SSR" icon="vial">
+    Always test server-side rendering to ensure initial data is properly hydrated.
+  </Card>
+</CardGroup>
+
+## Related
+
+- [Server Components](/api/nextjs/server-components)
+- [Middleware](/api/nextjs/middleware)
+- [React Provider](/api/react/consent-provider)

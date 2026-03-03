@@ -1,0 +1,289 @@
+---
+title: Contributing to c15t
+description: Learn how to contribute to the c15t open source project
+---
+
+We love your input! We want to make contributing to c15t as easy and transparent as possible, whether it's:
+
+- Reporting a bug
+- Discussing the current state of the code
+- Submitting a fix
+- Proposing new features
+- Becoming a maintainer
+
+## Before You Start
+
+Before diving into development, please:
+
+- Check existing [issues](https://github.com/c15t/c15t/issues) and [PRs](https://github.com/c15t/c15t/pulls) first
+- **Always create an issue before starting development**
+- Follow our PR template carefully
+- Review our [Code of Conduct](/oss/code-of-conduct)
+
+## Issue Approval Process
+
+We use the `needs-approval` label to manage contributions:
+
+### For Contributors
+
+**Needs Approval First:**
+- New features
+- Large-scale refactoring
+- Architecture changes
+- *Wait for a c15t team member to remove the `needs-approval` label*
+
+**Can Start Immediately:**
+- Bug fixes
+- Documentation updates
+- Performance improvements
+- Security fixes
+- Tests
+
+## Getting Started
+
+### 1. Fork and Clone
+
+Fork the repository and create your branch from `main`:
+
+```bash
+git clone https://github.com/your-username/c15t.git
+cd c15t
+git switch -c my-feature
+```
+
+### 2. Install Dependencies
+
+The project uses Bun as the package manager:
+
+```bash
+bun install
+```
+
+<Note>
+If you see references to pnpm in the CONTRIBUTING.md file, note that the project has migrated to Bun. Always use `bun` commands instead.
+</Note>
+
+### 3. Make Your Changes
+
+Ensure the following pass before submitting:
+
+```bash
+bun run fmt        # Format code with Biome
+bun run lint       # Lint code
+bun run test       # Run tests with Vitest
+bun run build      # Build all packages
+```
+
+## Pull Request Process
+
+### 1. Create an Issue First
+
+- For features/refactoring: Wait for approval (needs-approval label)
+- For bugs/docs: Can start work immediately
+
+### 2. Make Your Changes
+
+- Follow our coding standards (enforced by Biome)
+- Add tests for new functionality
+- Update documentation as needed
+- Follow [Conventional Commits](https://www.conventionalcommits.org/)
+
+### 3. Commit Guidelines
+
+Use conventional commit format:
+
+- `feat:` New features
+- `fix:` Bug fixes
+- `docs:` Documentation changes
+- `chore:` Maintenance tasks
+- `refactor:` Code changes without feature changes
+- `test:` Test changes
+- `perf:` Performance improvements
+
+**Examples:**
+```bash
+git commit -m "feat: add consent banner animation"
+git commit -m "fix: resolve memory leak in core package"
+git commit -m "docs: update React integration guide"
+```
+
+### 4. Create Pull Request
+
+- Use our PR template
+- Link the related issue
+- Add screenshots for UI changes
+- Describe your changes clearly
+
+### 5. Automated Checks
+
+The following will run automatically on your PR:
+
+- **Code formatting** (Biome)
+- **Type checking** (TypeScript)
+- **Tests** (Vitest)
+- **Build verification** (Turbo)
+- **Dependency checks** (Renovate)
+- **PR title format** validation
+- **Issue linking** verification
+
+### 6. Review Process
+
+- Maintainers will review your code
+- Address any requested changes
+- Once approved and all checks pass, it will be merged
+
+## Development Workflows
+
+### Running Specific Package Tests
+
+```bash
+# Run tests for a specific package
+cd packages/react
+bun test
+
+# Run tests with coverage
+bun test --coverage
+```
+
+### Building Specific Packages
+
+```bash
+# Build all library packages
+bun run build:libs
+
+# Build with Turbo filtering
+turbo build --filter=@c15t/react
+```
+
+### Type Checking
+
+```bash
+# Check types across all packages
+bun run check-types
+```
+
+### Linting and Formatting
+
+```bash
+# Format code
+bun run fmt
+
+# Lint code
+bun run lint
+
+# Auto-fix linting issues
+bun run lint:fix
+```
+
+## Testing Guidelines
+
+### Writing Tests
+
+- Write tests for all new features
+- Update existing tests when modifying functionality
+- Aim for high code coverage
+- Use descriptive test names
+
+**Example:**
+```typescript
+import { test, expect } from 'vitest';
+import { createConsent } from './consent';
+
+test('should create consent with default options', () => {
+  const consent = createConsent();
+  expect(consent).toBeDefined();
+  expect(consent.categories).toHaveLength(0);
+});
+```
+
+### Running Tests
+
+```bash
+# Run all tests
+bun run test
+
+# Run tests in watch mode
+bun test --watch
+
+# Run tests with UI
+bun test --ui
+```
+
+## Documentation
+
+When adding or modifying features:
+
+- Update relevant documentation in the `docs/` directory
+- Include code examples
+- Update API references if applicable
+- Keep README files up to date
+
+## Automated Workflows
+
+We leverage several automated workflows to ensure code quality:
+
+### Code Quality
+
+1. **Biome** - Automatically formats code and enforces style
+2. **TypeScript** - Type checks run on every PR
+3. **Vitest** - Runs the test suite
+4. **Turbo** - Ensures everything builds correctly
+
+### Dependencies
+
+1. **Renovate** - Keeps dependencies up to date
+2. **Bun** - Manages packages and workspaces
+3. **Changesets** - Handles versioning and changelogs
+
+### Release Process
+
+Releases are automated through our CI/CD pipeline:
+
+1. Merge to `main` triggers version check
+2. Changesets determines version bump
+3. New version is published to npm
+4. GitHub release is created
+5. Documentation is updated
+
+## License
+
+By contributing to c15t, you agree that your contributions will be licensed under the **GNU General Public License v3.0 (GPL-3.0)**.
+
+This is a copyleft license that ensures the software and all derivatives remain free and open source.
+
+### What This Means
+
+You can:
+- ✅ Use the code commercially
+- ✅ Modify the code
+- ✅ Distribute the code
+- ✅ Use the code privately
+- ✅ Use the code for patent purposes
+
+You must:
+- 📢 Disclose source code
+- 📄 Include original license
+- 📝 State changes made
+- 🔄 Use same license for derivatives
+- 📋 Include copyright notice
+
+[Learn more about GPL-3.0](https://choosealicense.com/licenses/gpl-3.0/)
+
+## Getting Help
+
+Don't hesitate to:
+
+- Open an [issue](https://github.com/c15t/c15t/issues)
+- Start a [discussion](https://github.com/c15t/c15t/discussions)
+- Join our [Discord community](https://c15t.link/discord)
+- Ask questions in PR comments
+
+## Recognition
+
+All contributors are recognized in:
+
+- Our GitHub contributors page
+- Release notes (for significant contributions)
+- The project README
+
+Thank you for contributing to c15t!

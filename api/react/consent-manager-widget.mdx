@@ -1,0 +1,252 @@
+---
+title: ConsentManagerWidget
+description: Embedded widget for managing consent preferences inline within your application.
+---
+
+The `ConsentManagerWidget` component provides an embedded, inline interface for managing consent preferences. Unlike the dialog, it can be placed anywhere in your application layout.
+
+## Import
+
+```tsx
+import { ConsentManagerWidget } from '@c15t/react';
+```
+
+## Usage
+
+```tsx
+import { ConsentManagerProvider, ConsentManagerWidget } from '@c15t/react';
+
+function SettingsPage() {
+  return (
+    <ConsentManagerProvider options={{ mode: 'c15t' }}>
+      <div>
+        <h1>Privacy Settings</h1>
+        <ConsentManagerWidget />
+      </div>
+    </ConsentManagerProvider>
+  );
+}
+```
+
+## Props
+
+<ParamField path="hideBrading" type="boolean">
+  Controls whether to hide the branding in the widget footer.
+  
+  **Default:** `false`
+</ParamField>
+
+<ParamField path="theme" type="ConsentManagerWidgetTheme">
+  Custom styles to apply to the widget and its child components.
+</ParamField>
+
+<ParamField path="noStyle" type="boolean">
+  When true, removes all default styling from the component.
+  
+  **Default:** `false`
+</ParamField>
+
+<ParamField path="disableAnimation" type="boolean">
+  When true, disables animations for accordions and transitions.
+  
+  **Default:** `false`
+</ParamField>
+
+<ParamField path="scrollLock" type="boolean">
+  When true, locks the page scroll when the widget is active.
+  
+  **Default:** `false`
+</ParamField>
+
+<ParamField path="trapFocus" type="boolean">
+  When true, traps focus within the widget for accessibility.
+  
+  **Default:** `false`
+</ParamField>
+
+<ParamField path="legalLinks" type="Array<string> | null">
+  Controls which legal links to display in the widget footer:
+  - `undefined` (default): Shows all available legal links from translations
+  - `null`: Explicitly hides all legal links
+  - Array of keys: Shows only the specified legal links
+  
+  **Example:**
+  ```tsx
+  // Show all legal links
+  <ConsentManagerWidget />
+  
+  // Hide all legal links
+  <ConsentManagerWidget legalLinks={null} />
+  
+  // Show only privacy policy and cookie policy
+  <ConsentManagerWidget legalLinks={['privacyPolicy', 'cookiePolicy']} />
+  ```
+</ParamField>
+
+## Examples
+
+### Basic Usage
+
+```tsx
+import { ConsentManagerProvider, ConsentManagerWidget } from '@c15t/react';
+
+function SettingsPage() {
+  return (
+    <ConsentManagerProvider options={{ mode: 'c15t' }}>
+      <div className="settings-container">
+        <h1>Cookie Preferences</h1>
+        <ConsentManagerWidget />
+      </div>
+    </ConsentManagerProvider>
+  );
+}
+```
+
+### Hide Branding
+
+```tsx
+import { ConsentManagerWidget } from '@c15t/react';
+
+function SettingsPage() {
+  return (
+    <div>
+      <h1>Privacy Settings</h1>
+      <ConsentManagerWidget hideBrading />
+    </div>
+  );
+}
+```
+
+### With Custom Styling
+
+```tsx
+import { ConsentManagerWidget } from '@c15t/react';
+
+function SettingsPage() {
+  return (
+    <ConsentManagerWidget
+      theme={{
+        widget: {
+          root: {
+            backgroundColor: '#f5f5f5',
+            borderRadius: '8px',
+            padding: '20px',
+          },
+          accordion: {
+            borderColor: '#e0e0e0',
+          },
+        },
+      }}
+    />
+  );
+}
+```
+
+### In Settings Page
+
+```tsx
+import { ConsentManagerWidget } from '@c15t/react';
+
+function SettingsPage() {
+  return (
+    <div className="settings-page">
+      <aside>
+        <nav>
+          <a href="#profile">Profile</a>
+          <a href="#privacy">Privacy</a>
+          <a href="#notifications">Notifications</a>
+        </nav>
+      </aside>
+      <main>
+        <section id="privacy">
+          <h2>Privacy & Cookies</h2>
+          <p>Manage your cookie preferences and privacy settings.</p>
+          <ConsentManagerWidget />
+        </section>
+      </main>
+    </div>
+  );
+}
+```
+
+### With Legal Links
+
+```tsx
+import { ConsentManagerProvider, ConsentManagerWidget } from '@c15t/react';
+
+function SettingsPage() {
+  return (
+    <ConsentManagerProvider
+      options={{
+        mode: 'c15t',
+        legalLinks: {
+          privacyPolicy: 'https://example.com/privacy',
+          cookiePolicy: 'https://example.com/cookies',
+        },
+      }}
+    >
+      <ConsentManagerWidget legalLinks={['privacyPolicy', 'cookiePolicy']} />
+    </ConsentManagerProvider>
+  );
+}
+```
+
+### Disable Animations
+
+```tsx
+import { ConsentManagerWidget } from '@c15t/react';
+
+function SettingsPage() {
+  return (
+    <ConsentManagerWidget disableAnimation />
+  );
+}
+```
+
+## Features
+
+The `ConsentManagerWidget` provides:
+
+- Accordion interface for consent categories
+- Toggle switches for each category (except necessary cookies)
+- Category descriptions and purposes
+- Accept all / Reject all buttons
+- Save preferences button
+- Optional branding footer
+- Optional legal links
+- Inline embedding in any layout
+
+## Use Cases
+
+The widget is perfect for:
+
+- **Settings Pages**: Embed directly in your app's settings or preferences page
+- **Privacy Centers**: Create a dedicated privacy management page
+- **Account Dashboard**: Add to user account sections
+- **Custom Layouts**: Place anywhere in your application where users manage preferences
+
+## Accessibility
+
+The `ConsentManagerWidget` component is built with accessibility in mind:
+
+- Proper ARIA labels for accordions and switches
+- Keyboard navigation support
+- Screen reader friendly descriptions
+- Semantic HTML structure
+- Focus management
+
+## Type Definitions
+
+```tsx
+import type { ConsentManagerWidgetProps } from '@c15t/react';
+
+interface ConsentManagerWidgetProps {
+  hideBrading?: boolean;
+  theme?: ConsentManagerWidgetTheme;
+  noStyle?: boolean;
+  disableAnimation?: boolean;
+  scrollLock?: boolean;
+  trapFocus?: boolean;
+  legalLinks?: Array<string> | null;
+}
+```

@@ -1,0 +1,822 @@
+---
+title: "Hooks"
+description: "React hooks for accessing and managing consent state. Complete API reference with TypeScript signatures and examples."
+icon: "hook"
+---
+
+## Overview
+
+The c15t React package provides several hooks for accessing consent state, translations, and UI utilities. All hooks must be used within a `ConsentManagerProvider`.
+
+## useConsentManager
+
+The primary hook for accessing and managing consent state. Provides access to the complete consent management API.
+
+### Signature
+
+```typescript
+function useConsentManager(): ConsentManagerState & {
+  manager?: ConsentManagerInterface;
+}
+```
+
+### Return Value
+
+Returns an object containing:
+
+<ParamField path="consents" type="Record<string, boolean>">
+  Current consent state as a key-value map (e.g., `{ necessary: true, analytics: false }`).
+</ParamField>
+
+<ParamField path="consentTypes" type="ConsentType[]">
+  Array of available consent categories with metadata:
+  ```typescript
+  interface ConsentType {
+    name: string;          // e.g., 'necessary', 'analytics'
+    required: boolean;     // Whether consent is mandatory
+    label?: string;        // Display label
+    description?: string;  // Description text
+  }
+  ```
+</ParamField>
+
+<ParamField path="isLoading" type="boolean">
+  Whether consent data is currently loading.
+</ParamField>
+
+<ParamField path="isBannerOpen" type="boolean">
+  Whether the cookie banner should be displayed.
+</ParamField>
+
+<ParamField path="isPrivacyDialogOpen" type="boolean">
+  Whether the consent dialog should be displayed.
+</ParamField>
+
+<ParamField path="country" type="string | null">
+  User's detected country code (e.g., `'US'`, `'DE'`).
+</ParamField>
+
+<ParamField path="region" type="string | null">
+  User's detected region/state code (e.g., `'CA'`, `'NY'`).
+</ParamField>
+
+<ParamField path="language" type="string">
+  Current language code (e.g., `'en'`, `'de'`).
+</ParamField>
+
+<ParamField path="translationConfig" type="TranslationConfig">
+  Current translation configuration.
+</ParamField>
+
+<ParamField path="setConsent" type="(consents: Record<string, boolean>) => Promise<void>">
+  Update specific consent preferences.
+</ParamField>
+
+<ParamField path="acceptConsent" type="() => Promise<void>">
+  Accept all consent categories.
+</ParamField>
+
+<ParamField path="rejectConsent" type="() => Promise<void>">
+  Reject all non-required consent categories.
+</ParamField>
+
+<ParamField path="hasConsent" type="(category: string) => boolean">
+  Check if a specific consent category has been granted.
+</ParamField>
+
+<ParamField path="openBanner" type="() => void">
+  Programmatically open the cookie banner.
+</ParamField>
+
+<ParamField path="closeBanner" type="() => void">
+  Programmatically close the cookie banner.
+</ParamField>
+
+<ParamField path="openDialog" type="() => void">
+  Programmatically open the consent dialog.
+</ParamField>
+
+<ParamField path="closeDialog" type="() => void">
+  Programmatically close the consent dialog.
+</ParamField>
+
+<ParamField path="resetConsent" type="() => Promise<void>">
+  Reset all consent preferences to initial state.
+</ParamField>
+
+<ParamField path="manager" type="ConsentManagerInterface | undefined">
+  The underlying consent manager instance (if configured).
+</ParamField>
+
+### Usage Examples
+
+<Tabs>
+  <Tab title="Check Consent">
+    ```tsx
+    import { useConsentManager } from '@c15t/react';
+
+    function AnalyticsComponent() {
+      const { hasConsent } = useConsentManager();
+
+      if (!hasConsent('analytics')) {
+        return null; // Don't load analytics
+      }
+
+      return <AnalyticsScript />;
+    }
+    ```
+  </Tab>
+
+  <Tab title="Update Consent">
+    ```tsx
+    import { useConsentManager } from '@c15t/react';
+
+    function ConsentToggle() {
+      const { consents, setConsent } = useConsentManager();
+
+      const toggleAnalytics = async () => {
+        await setConsent({
+          analytics: !consents.analytics,
+        });
+      };
+
+      return (
+        <button onClick={toggleAnalytics}>
+          Analytics: {consents.analytics ? 'On' : 'Off'}
+        </button>
+      );
+    }
+    ```
+  </Tab>
+
+  <Tab title="Accept/Reject All">
+    ```tsx
+    import { useConsentManager } from '@c15t/react';
+
+    function ConsentButtons() {
+      const { acceptConsent, rejectConsent } = useConsentManager();
+
+      return (
+        <div>
+          <button onClick={acceptConsent}>
+            Accept All
+          </button>
+          <button onClick={rejectConsent}>
+            Reject All
+          </button>
+        </div>
+      );
+    }
+    ```
+  </Tab>
+
+  <Tab title="Open/Close Dialogs">
+    ```tsx
+    import { useConsentManager } from '@c15t/react';
+
+    function SettingsButton() {
+      const { openDialog } = useConsentManager();
+
+      return (
+        <button onClick={openDialog}>
+          Cookie Settings
+        </button>
+      );
+    }
+    ```
+  </Tab>
+
+  <Tab title="List Consents">
+    ```tsx
+    import { useConsentManager } from '@c15t/react';
+
+    function ConsentList() {
+      const { consentTypes, consents } = useConsentManager();
+
+      return (
+        <ul>
+          {consentTypes.map((type) => (
+            <li key={type.name}>
+              {type.name}: {consents[type.name] ? '✓' : '✗'}
+              {type.required && ' (Required)'}
+            </li>
+          ))}
+        </ul>
+      );
+    }
+    ```
+  </Tab>
+
+  <Tab title="Loading State">
+    ```tsx
+    import { useConsentManager } from '@c15t/react';
+
+    function ConsentStatus() {
+      const { isLoading, country, region } = useConsentManager();
+
+      if (isLoading) {
+        return <div>Loading consent preferences...</div>;
+      }
+
+      return (
+        <div>
+          Location: {country}, {region}
+        </div>
+      );
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### Error Handling
+
+The hook throws an error if used outside of `ConsentManagerProvider`:
+
+```tsx
+import { useConsentManager } from '@c15t/react';
+
+function MyComponent() {
+  try {
+    const consent = useConsentManager();
+  } catch (error) {
+    // Error: useConsentManager must be used within a ConsentManagerProvider
+  }
+}
+```
+
+Always ensure your component is wrapped:
+
+```tsx
+import { ConsentManagerProvider, useConsentManager } from '@c15t/react';
+
+function App() {
+  return (
+    <ConsentManagerProvider options={{ mode: 'c15t' }}>
+      <MyComponent /> {/* ✓ This will work */}
+    </ConsentManagerProvider>
+  );
+}
+```
+
+## useTranslations
+
+Access translations for the current language. Automatically handles language selection and fallbacks.
+
+### Signature
+
+```typescript
+function useTranslations(): Translations
+```
+
+### Return Value
+
+Returns a `Translations` object with the following structure:
+
+```typescript
+interface Translations {
+  cookieBanner: {
+    title: string;
+    description: string;
+  };
+  consentManagerDialog: {
+    title: string;
+    description: string;
+    savePreferences: string;
+  };
+  consentTypes: {
+    necessary: { title: string; description: string };
+    analytics: { title: string; description: string };
+    marketing: { title: string; description: string };
+    preferences: { title: string; description: string };
+    // ... other consent types
+  };
+  common: {
+    acceptAll: string;
+    rejectAll: string;
+    customize: string;
+    save: string;
+    close: string;
+    cancel: string;
+  };
+  legalLinks: {
+    privacyPolicy: string;
+    cookiePolicy: string;
+    termsOfService: string;
+    impressum: string;
+    // ... other legal links
+  };
+}
+```
+
+### Usage Examples
+
+<Tabs>
+  <Tab title="Basic Usage">
+    ```tsx
+    import { useTranslations } from '@c15t/react';
+
+    function CookieBanner() {
+      const translations = useTranslations();
+
+      return (
+        <div>
+          <h2>{translations.cookieBanner.title}</h2>
+          <p>{translations.cookieBanner.description}</p>
+          <button>{translations.common.acceptAll}</button>
+        </div>
+      );
+    }
+    ```
+  </Tab>
+
+  <Tab title="Consent Types">
+    ```tsx
+    import { useConsentManager, useTranslations } from '@c15t/react';
+
+    function ConsentList() {
+      const { consentTypes } = useConsentManager();
+      const translations = useTranslations();
+
+      return (
+        <ul>
+          {consentTypes.map((type) => (
+            <li key={type.name}>
+              <h3>{translations.consentTypes[type.name]?.title}</h3>
+              <p>{translations.consentTypes[type.name]?.description}</p>
+            </li>
+          ))}
+        </ul>
+      );
+    }
+    ```
+  </Tab>
+
+  <Tab title="Legal Links">
+    ```tsx
+    import { useTranslations } from '@c15t/react';
+
+    function Footer() {
+      const translations = useTranslations();
+
+      return (
+        <footer>
+          <a href="/privacy">
+            {translations.legalLinks.privacyPolicy}
+          </a>
+          <a href="/cookies">
+            {translations.legalLinks.cookiePolicy}
+          </a>
+        </footer>
+      );
+    }
+    ```
+  </Tab>
+
+  <Tab title="Custom Messages">
+    ```tsx
+    import { useTranslations } from '@c15t/react';
+
+    function ConsentDialog() {
+      const t = useTranslations();
+
+      return (
+        <dialog>
+          <h2>{t.consentManagerDialog.title}</h2>
+          <p>{t.consentManagerDialog.description}</p>
+          <button>{t.consentManagerDialog.savePreferences}</button>
+          <button>{t.common.cancel}</button>
+        </dialog>
+      );
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### Custom Translations
+
+Provide custom translations via the provider:
+
+```tsx
+import { ConsentManagerProvider } from '@c15t/react';
+
+function App() {
+  return (
+    <ConsentManagerProvider
+      options={{
+        mode: 'c15t',
+        translations: {
+          defaultLanguage: 'en',
+          translations: {
+            en: {
+              cookieBanner: {
+                title: 'Custom Cookie Notice',
+                description: 'We use cookies to improve your experience.',
+              },
+              common: {
+                acceptAll: 'Accept All Cookies',
+                rejectAll: 'Reject All Cookies',
+              },
+            },
+            de: {
+              cookieBanner: {
+                title: 'Cookie-Hinweis',
+                description: 'Wir verwenden Cookies zur Verbesserung Ihrer Erfahrung.',
+              },
+            },
+          },
+        },
+      }}
+    >
+      {children}
+    </ConsentManagerProvider>
+  );
+}
+```
+
+## useColorScheme
+
+Manage color scheme preferences for components. Adds/removes `c15t-dark` class on the document element.
+
+### Signature
+
+```typescript
+type ColorScheme = 'light' | 'dark' | 'system' | null;
+
+function useColorScheme(colorScheme?: ColorScheme): void
+```
+
+### Parameters
+
+<ParamField path="colorScheme" type="'light' | 'dark' | 'system' | null">
+  - `'light'`: Force light mode
+  - `'dark'`: Force dark mode
+  - `'system'`: Follow system preference
+  - `null` or `undefined`: Auto-detect from `.dark` class on document element
+</ParamField>
+
+### Usage Examples
+
+<Tabs>
+  <Tab title="System Preference">
+    ```tsx
+    import { useColorScheme } from '@c15t/react';
+
+    function App() {
+      // Automatically follows system dark mode preference
+      useColorScheme('system');
+
+      return <YourApp />;
+    }
+    ```
+  </Tab>
+
+  <Tab title="Force Dark Mode">
+    ```tsx
+    import { useColorScheme } from '@c15t/react';
+
+    function App() {
+      // Always use dark mode
+      useColorScheme('dark');
+
+      return <YourApp />;
+    }
+    ```
+  </Tab>
+
+  <Tab title="User Toggle">
+    ```tsx
+    import { useColorScheme } from '@c15t/react';
+    import { useState } from 'react';
+
+    function App() {
+      const [scheme, setScheme] = useState<'light' | 'dark'>('light');
+      
+      useColorScheme(scheme);
+
+      return (
+        <div>
+          <button onClick={() => setScheme(s => s === 'light' ? 'dark' : 'light')}>
+            Toggle Theme
+          </button>
+          <YourApp />
+        </div>
+      );
+    }
+    ```
+  </Tab>
+
+  <Tab title="Auto-Detect">
+    ```tsx
+    import { useColorScheme } from '@c15t/react';
+
+    function App() {
+      // Detects .dark class on <html> element
+      // Commonly used with Tailwind's dark mode
+      useColorScheme();
+
+      return <YourApp />;
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### Global Configuration
+
+Set color scheme globally via the provider:
+
+```tsx
+import { ConsentManagerProvider } from '@c15t/react';
+
+function App() {
+  return (
+    <ConsentManagerProvider
+      options={{
+        mode: 'c15t',
+        react: {
+          colorScheme: 'system', // or 'light' | 'dark'
+        },
+      }}
+    >
+      {children}
+    </ConsentManagerProvider>
+  );
+}
+```
+
+## useFocusTrap
+
+Trap focus within a container for accessibility. Useful for modal dialogs and overlays.
+
+### Signature
+
+```typescript
+function useFocusTrap(
+  shouldTrap: boolean,
+  containerRef: RefObject<HTMLElement> | null
+): void
+```
+
+### Parameters
+
+<ParamField path="shouldTrap" type="boolean" required>
+  Whether focus should be trapped. Set to `true` when modal is open.
+</ParamField>
+
+<ParamField path="containerRef" type="RefObject<HTMLElement> | null" required>
+  Reference to the container element where focus should be trapped.
+</ParamField>
+
+### Behavior
+
+- Focuses first focusable element when trap is enabled
+- Tab key cycles through focusable elements within container
+- Shift+Tab cycles backward
+- Restores focus to previous element when trap is disabled
+- Only traps focus on visible, non-disabled elements
+
+### Usage Examples
+
+<Tabs>
+  <Tab title="Modal Dialog">
+    ```tsx
+    import { useFocusTrap } from '@c15t/react';
+    import { useRef, useState } from 'react';
+
+    function Modal() {
+      const [isOpen, setIsOpen] = useState(false);
+      const modalRef = useRef<HTMLDivElement>(null);
+      
+      useFocusTrap(isOpen, modalRef);
+
+      if (!isOpen) return null;
+
+      return (
+        <div
+          ref={modalRef}
+          role="dialog"
+          aria-modal="true"
+        >
+          <h2>Modal Title</h2>
+          <input type="text" placeholder="First focusable" />
+          <button>Action</button>
+          <button onClick={() => setIsOpen(false)}>Close</button>
+        </div>
+      );
+    }
+    ```
+  </Tab>
+
+  <Tab title="Custom Dialog">
+    ```tsx
+    import { useFocusTrap, useConsentManager } from '@c15t/react';
+    import { useRef } from 'react';
+
+    function ConsentDialog() {
+      const { isPrivacyDialogOpen, closeDialog } = useConsentManager();
+      const dialogRef = useRef<HTMLDivElement>(null);
+      
+      useFocusTrap(isPrivacyDialogOpen, dialogRef);
+
+      if (!isPrivacyDialogOpen) return null;
+
+      return (
+        <>
+          <div className="overlay" onClick={closeDialog} />
+          <div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="dialog-title"
+          >
+            <h2 id="dialog-title">Consent Preferences</h2>
+            {/* Dialog content */}
+            <button onClick={closeDialog}>Close</button>
+          </div>
+        </>
+      );
+    }
+    ```
+  </Tab>
+
+  <Tab title="Nested Focus">
+    ```tsx
+    import { useFocusTrap } from '@c15t/react';
+    import { useRef, useState } from 'react';
+
+    function NestedModals() {
+      const [modalOpen, setModalOpen] = useState(false);
+      const [nestedOpen, setNestedOpen] = useState(false);
+      const modalRef = useRef<HTMLDivElement>(null);
+      const nestedRef = useRef<HTMLDivElement>(null);
+      
+      // First modal
+      useFocusTrap(modalOpen && !nestedOpen, modalRef);
+      
+      // Nested modal takes priority
+      useFocusTrap(nestedOpen, nestedRef);
+
+      return (
+        <>
+          {modalOpen && (
+            <div ref={modalRef} role="dialog">
+              <h2>Main Modal</h2>
+              <button onClick={() => setNestedOpen(true)}>
+                Open Nested
+              </button>
+            </div>
+          )}
+          
+          {nestedOpen && (
+            <div ref={nestedRef} role="dialog">
+              <h2>Nested Modal</h2>
+              <button onClick={() => setNestedOpen(false)}>
+                Close
+              </button>
+            </div>
+          )}
+        </>
+      );
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### Accessibility
+
+The hook automatically:
+- Stores previous focus to restore on close
+- Finds all focusable elements (buttons, inputs, links, etc.)
+- Filters out hidden or disabled elements
+- Handles Tab and Shift+Tab keyboard navigation
+- Cycles focus when reaching first/last element
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Always check loading state">
+    Check `isLoading` before rendering consent-dependent content:
+
+    ```tsx
+    const { isLoading, hasConsent } = useConsentManager();
+
+    if (isLoading) {
+      return <Skeleton />;
+    }
+
+    if (!hasConsent('analytics')) {
+      return null;
+    }
+
+    return <AnalyticsComponent />;
+    ```
+  </Accordion>
+
+  <Accordion title="Use translations for all text">
+    Always use `useTranslations` instead of hardcoding text:
+
+    ```tsx
+    // ✅ Correct
+    const t = useTranslations();
+    <button>{t.common.acceptAll}</button>
+
+    // ❌ Wrong
+    <button>Accept All</button>
+    ```
+  </Accordion>
+
+  <Accordion title="Handle async consent updates">
+    Consent updates are async - handle loading and errors:
+
+    ```tsx
+    const { setConsent } = useConsentManager();
+    const [saving, setSaving] = useState(false);
+
+    const handleSave = async () => {
+      setSaving(true);
+      try {
+        await setConsent({ analytics: true });
+      } catch (error) {
+        console.error('Failed to save consent:', error);
+      } finally {
+        setSaving(false);
+      }
+    };
+    ```
+  </Accordion>
+
+  <Accordion title="Memoize consent checks">
+    Use React.memo or useMemo for expensive consent-based rendering:
+
+    ```tsx
+    import { useMemo } from 'react';
+    import { useConsentManager } from '@c15t/react';
+
+    function ExpensiveComponent() {
+      const { consents } = useConsentManager();
+      
+      const canRender = useMemo(
+        () => consents.analytics && consents.marketing,
+        [consents.analytics, consents.marketing]
+      );
+
+      if (!canRender) return null;
+      
+      return <ExpensiveRender />;
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Proper focus trap cleanup">
+    Focus trap automatically cleans up, but ensure refs are stable:
+
+    ```tsx
+    // ✅ Correct - stable ref
+    const dialogRef = useRef<HTMLDivElement>(null);
+    useFocusTrap(isOpen, dialogRef);
+
+    // ❌ Wrong - creates new ref on every render
+    useFocusTrap(isOpen, { current: document.getElementById('dialog') });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## TypeScript Support
+
+All hooks are fully typed. Import types for better type safety:
+
+```tsx
+import type { 
+  ConsentManagerState,
+  Translations,
+  ColorScheme,
+  AllConsentNames
+} from '@c15t/react';
+
+import { useConsentManager } from '@c15t/react';
+
+function MyComponent() {
+  const state: ConsentManagerState = useConsentManager();
+  const translations: Translations = useTranslations();
+  
+  // Type-safe consent checks
+  const category: AllConsentNames = 'analytics';
+  const hasAnalytics = state.hasConsent(category);
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Components" icon="puzzle-piece" href="/frameworks/react/components">
+    Explore all available UI components.
+  </Card>
+  <Card title="Headless Mode" icon="code" href="/frameworks/react/headless">
+    Build custom UI with headless hooks.
+  </Card>
+  <Card title="Examples" icon="code" href="https://github.com/c15t/examples/tree/main/react">
+    Browse complete example implementations.
+  </Card>
+  <Card title="API Reference" icon="book" href="/api/react/hooks">
+    Full TypeScript API documentation.
+  </Card>
+</CardGroup>

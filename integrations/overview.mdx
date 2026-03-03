@@ -1,0 +1,158 @@
+---
+title: "Integrations Overview"
+description: "Pre-built, consent-aware scripts for popular analytics and marketing tools"
+icon: "puzzle-piece"
+---
+
+## What are c15t integrations?
+
+c15t provides pre-built script integrations for popular analytics and marketing tools. These integrations automatically respect user consent preferences and integrate seamlessly with c15t's script loader.
+
+## Key features
+
+<CardGroup cols={2}>
+  <Card title="Consent-aware" icon="shield-check">
+    Scripts automatically load and unload based on user consent preferences
+  </Card>
+  
+  <Card title="Easy setup" icon="bolt">
+    Pre-configured with vendor defaults — just add your ID
+  </Card>
+  
+  <Card title="Type-safe" icon="code">
+    Full TypeScript support with autocomplete for all options
+  </Card>
+  
+  <Card title="Flexible" icon="sliders">
+    Override any script behavior or add custom callbacks
+  </Card>
+</CardGroup>
+
+## Available integrations
+
+<CardGroup cols={2}>
+  <Card title="Google Tag Manager" icon="google" href="/integrations/google-tag-manager">
+    Manage all your marketing tags with Google's consent mode
+  </Card>
+  
+  <Card title="PostHog" icon="chart-line" href="/integrations/posthog">
+    Open-source product analytics with opt-in/opt-out support
+  </Card>
+  
+  <Card title="Meta Pixel" icon="meta" href="/integrations/meta-pixel">
+    Facebook/Instagram conversion tracking with consent API
+  </Card>
+  
+  <Card title="TikTok Pixel" icon="tiktok" href="/integrations/tiktok-pixel">
+    TikTok advertising and analytics tracking
+  </Card>
+  
+  <Card title="LinkedIn Insights" icon="linkedin" href="/integrations/linkedin-insights">
+    LinkedIn conversion tracking and analytics
+  </Card>
+  
+  <Card title="Microsoft UET" icon="microsoft" href="/integrations/microsoft-uet">
+    Bing Ads conversion tracking with consent mode
+  </Card>
+  
+  <Card title="X Pixel" icon="x-twitter" href="/integrations/x-pixel">
+    Twitter/X advertising conversion tracking
+  </Card>
+</CardGroup>
+
+## Installation
+
+Install the scripts package alongside c15t:
+
+<CodeGroup>
+```bash npm
+npm install @c15t/scripts c15t
+```
+
+```bash yarn
+yarn add @c15t/scripts c15t
+```
+
+```bash pnpm
+pnpm add @c15t/scripts c15t
+```
+
+```bash bun
+bun add @c15t/scripts c15t
+```
+</CodeGroup>
+
+## Basic usage
+
+Import the integration function and pass it to c15t's script loader:
+
+```typescript
+import { loadScripts } from 'c15t';
+import { googleTagManager } from '@c15t/scripts/google-tag-manager';
+
+// Create the script configuration
+const gtmScript = googleTagManager({
+  id: 'GTM-XXXXXXX',
+});
+
+// Load with c15t's script loader
+loadScripts([gtmScript], {
+  consents: {
+    necessary: true,
+    functionality: false,
+    measurement: false,
+    marketing: false,
+    experience: false,
+  },
+});
+```
+
+## How it works
+
+### Consent categories
+
+Each integration is assigned a default consent category:
+
+- **necessary**: Google Tag Manager (since it manages other scripts)
+- **measurement**: PostHog
+- **marketing**: Meta Pixel, TikTok Pixel, LinkedIn Insights, Microsoft UET, X Pixel
+
+You can override the category for any integration:
+
+```typescript
+const customScript = metaPixel({
+  pixelId: '123456789012345',
+  script: {
+    category: 'measurement', // Override default 'marketing'
+  },
+});
+```
+
+### Script lifecycle
+
+Integrations handle the complete script lifecycle:
+
+1. **Before load**: Initialize vendor-specific objects and configuration
+2. **On load**: Execute vendor initialization code
+3. **On consent change**: Update consent state with vendor APIs
+4. **On delete**: Clean up scripts and revoke consent when needed
+
+### Persistent scripts
+
+Some integrations (Meta Pixel, TikTok Pixel, Microsoft UET, X Pixel) are persistent — they remain loaded even when consent is revoked, but use vendor consent APIs to stop tracking. This provides better performance and user experience.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Choose an integration" icon="hand-pointer" href="/integrations/google-tag-manager">
+    Browse available integrations and implementation guides
+  </Card>
+  
+  <Card title="Script loader docs" icon="book" href="https://c15t.com/docs/frameworks/javascript/script-loader">
+    Learn more about c15t's script loader API
+  </Card>
+</CardGroup>
+
+<Note>
+  All integrations are open source. View the source code on [GitHub](https://github.com/c15t/c15t/tree/main/packages/scripts/src).
+</Note>

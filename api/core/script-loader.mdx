@@ -1,0 +1,455 @@
+---
+title: Script Loader
+description: Dynamically load and manage scripts based on consent state
+---
+
+## Overview
+
+The Script Loader module provides functions for loading, unloading, and managing scripts based on user consent. Scripts can be external files, inline code, or callback-only configurations.
+
+## Core Functions
+
+### loadScripts
+
+Loads scripts based on user consent settings.
+
+```typescript
+function loadScripts(
+  scripts: Script[],
+  consents: ConsentState,
+  scriptIdMap?: Record<string, string>
+): string[]
+```
+
+<ParamField path="scripts" type="Script[]" required>
+  Array of script configurations to potentially load.
+</ParamField>
+
+<ParamField path="consents" type="ConsentState" required>
+  Current user consent state.
+</ParamField>
+
+<ParamField path="scriptIdMap" type="Record<string, string>">
+  Map of anonymized script IDs to original IDs.
+</ParamField>
+
+<ResponseField name="return" type="string[]">
+  Array of script IDs that were successfully loaded.
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { loadScripts } from '@c15t/core';
+
+const scripts = [
+  {
+    id: 'google-analytics',
+    src: 'https://www.googletagmanager.com/gtag/js?id=GA_ID',
+    category: 'measurement',
+    async: true,
+    onLoad: ({ id }) => {
+      console.log(`${id} loaded successfully`);
+    }
+  }
+];
+
+const consents = { measurement: true, marketing: false };
+const loaded = loadScripts(scripts, consents);
+console.log('Loaded scripts:', loaded);
+```
+
+### unloadScripts
+
+Unloads scripts that no longer have consent.
+
+```typescript
+function unloadScripts(
+  scripts: Script[],
+  consents: ConsentState,
+  scriptIdMap?: Record<string, string>
+): string[]
+```
+
+<ParamField path="scripts" type="Script[]" required>
+  Array of script configurations to check.
+</ParamField>
+
+<ParamField path="consents" type="ConsentState" required>
+  Current user consent state.
+</ParamField>
+
+<ParamField path="scriptIdMap" type="Record<string, string>">
+  Map of anonymized script IDs to original IDs.
+</ParamField>
+
+<ResponseField name="return" type="string[]">
+  Array of script IDs that were unloaded.
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { unloadScripts } from '@c15t/core';
+
+const consents = { measurement: false, marketing: false };
+const unloaded = unloadScripts(scripts, consents);
+console.log('Unloaded scripts:', unloaded);
+```
+
+### updateScripts
+
+Updates scripts based on current consent state, loading new scripts and unloading revoked ones.
+
+```typescript
+function updateScripts(
+  scripts: Script[],
+  consents: ConsentState,
+  scriptIdMap?: Record<string, string>
+): ScriptUpdateResult
+```
+
+<ParamField path="scripts" type="Script[]" required>
+  Array of script configurations to manage.
+</ParamField>
+
+<ParamField path="consents" type="ConsentState" required>
+  Current user consent state.
+</ParamField>
+
+<ParamField path="scriptIdMap" type="Record<string, string>">
+  Map of anonymized script IDs to original IDs.
+</ParamField>
+
+<ResponseField name="return" type="ScriptUpdateResult">
+  Object containing arrays of loaded and unloaded script IDs.
+  
+  <Expandable title="ScriptUpdateResult properties">
+    <ResponseField name="loaded" type="string[]">
+      Array of script IDs that were loaded.
+    </ResponseField>
+    <ResponseField name="unloaded" type="string[]">
+      Array of script IDs that were unloaded.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { updateScripts } from '@c15t/core';
+
+const result = updateScripts(scripts, consents);
+console.log('Loaded:', result.loaded);
+console.log('Unloaded:', result.unloaded);
+```
+
+### isScriptLoaded
+
+Checks if a script is currently loaded.
+
+```typescript
+function isScriptLoaded(scriptId: string): boolean
+```
+
+<ParamField path="scriptId" type="string" required>
+  ID of the script to check.
+</ParamField>
+
+<ResponseField name="return" type="boolean">
+  True if the script is loaded, false otherwise.
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { isScriptLoaded } from '@c15t/core';
+
+if (isScriptLoaded('google-analytics')) {
+  console.log('Google Analytics is loaded');
+}
+```
+
+### getLoadedScriptIds
+
+Gets all currently loaded script IDs.
+
+```typescript
+function getLoadedScriptIds(): string[]
+```
+
+<ResponseField name="return" type="string[]">
+  Array of loaded script IDs.
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { getLoadedScriptIds } from '@c15t/core';
+
+const loadedScripts = getLoadedScriptIds();
+console.log('Currently loaded:', loadedScripts);
+```
+
+## Types
+
+### Script
+
+Represents a script to be loaded based on consent conditions.
+
+```typescript
+interface Script {
+  id: string;
+  src?: string;
+  textContent?: string;
+  category: HasCondition<AllConsentNames>;
+  callbackOnly?: boolean;
+  persistAfterConsentRevoked?: boolean;
+  alwaysLoad?: boolean;
+  fetchPriority?: 'high' | 'low' | 'auto';
+  attributes?: Record<string, string>;
+  async?: boolean;
+  defer?: boolean;
+  nonce?: string;
+  anonymizeId?: boolean;
+  target?: 'head' | 'body';
+  onBeforeLoad?: (info: ScriptCallbackInfo) => void;
+  onLoad?: (info: ScriptCallbackInfo) => void;
+  onDelete?: (info: ScriptCallbackInfo) => void;
+  onError?: (info: ScriptCallbackInfo) => void;
+  onConsentChange?: (info: ScriptCallbackInfo) => void;
+}
+```
+
+<ResponseField name="id" type="string" required>
+  Unique identifier for the script.
+</ResponseField>
+
+<ResponseField name="src" type="string">
+  URL of the script to load. Either `src` or `textContent` must be provided (unless `callbackOnly` is true).
+</ResponseField>
+
+<ResponseField name="textContent" type="string">
+  Inline JavaScript code to execute. Either `src` or `textContent` must be provided (unless `callbackOnly` is true).
+</ResponseField>
+
+<ResponseField name="category" type="HasCondition<AllConsentNames>" required>
+  Consent category or condition required to load this script. Supports simple consent names or complex conditions with `and`, `or`, `not` logic.
+  
+  ```typescript
+  // Simple
+  category: 'measurement'
+  
+  // Complex
+  category: { and: ['measurement', 'marketing'] }
+  category: { or: ['measurement', 'marketing'] }
+  category: { not: 'marketing' }
+  ```
+</ResponseField>
+
+<ResponseField name="callbackOnly" type="boolean" default="false">
+  When true, no script tag is added to the DOM. Only callbacks are executed based on consent changes. Useful for managing consent for libraries already loaded on the page.
+</ResponseField>
+
+<ResponseField name="persistAfterConsentRevoked" type="boolean" default="false">
+  When true, the script remains in the DOM after consent is revoked (but is tracked as unloaded).
+</ResponseField>
+
+<ResponseField name="alwaysLoad" type="boolean" default="false">
+  When true, the script always loads regardless of consent state and is never unloaded. Useful for scripts like Google Tag Manager that manage their own consent.
+</ResponseField>
+
+<ResponseField name="fetchPriority" type="'high' | 'low' | 'auto'">
+  Priority hint for browser resource loading.
+</ResponseField>
+
+<ResponseField name="attributes" type="Record<string, string>">
+  Additional attributes to add to the script element.
+</ResponseField>
+
+<ResponseField name="async" type="boolean">
+  Whether to use async loading.
+</ResponseField>
+
+<ResponseField name="defer" type="boolean">
+  Whether to defer script loading.
+</ResponseField>
+
+<ResponseField name="nonce" type="string">
+  Content Security Policy nonce.
+</ResponseField>
+
+<ResponseField name="anonymizeId" type="boolean" default="true">
+  Whether to use an anonymized ID for the script element. Helps prevent ad blockers from blocking the script.
+</ResponseField>
+
+<ResponseField name="target" type="'head' | 'body'" default="'head'">
+  Where to inject the script element in the DOM.
+</ResponseField>
+
+<ResponseField name="onBeforeLoad" type="(info: ScriptCallbackInfo) => void">
+  Callback executed before the script is loaded.
+</ResponseField>
+
+<ResponseField name="onLoad" type="(info: ScriptCallbackInfo) => void">
+  Callback executed when the script loads successfully.
+</ResponseField>
+
+<ResponseField name="onDelete" type="(info: ScriptCallbackInfo) => void">
+  Callback executed when the script is being unloaded/removed.
+</ResponseField>
+
+<ResponseField name="onError" type="(info: ScriptCallbackInfo) => void">
+  Callback executed if the script fails to load.
+</ResponseField>
+
+<ResponseField name="onConsentChange" type="(info: ScriptCallbackInfo) => void">
+  Callback executed whenever the consent store changes (only for already loaded scripts).
+</ResponseField>
+
+### ScriptCallbackInfo
+
+Information passed to script callbacks.
+
+```typescript
+interface ScriptCallbackInfo {
+  id: string;
+  elementId: string;
+  hasConsent: boolean;
+  consents: ConsentState;
+  element?: HTMLScriptElement;
+  error?: Error;
+}
+```
+
+<ResponseField name="id" type="string">
+  The original script ID.
+</ResponseField>
+
+<ResponseField name="elementId" type="string">
+  The actual DOM element ID used (anonymized if enabled).
+</ResponseField>
+
+<ResponseField name="hasConsent" type="boolean">
+  Whether the script has consent to load.
+</ResponseField>
+
+<ResponseField name="consents" type="ConsentState">
+  The current consent state.
+</ResponseField>
+
+<ResponseField name="element" type="HTMLScriptElement">
+  The script element (undefined for callback-only scripts).
+</ResponseField>
+
+<ResponseField name="error" type="Error">
+  Error information (for error callbacks).
+</ResponseField>
+
+## Examples
+
+### Google Analytics
+
+```typescript
+{
+  id: 'google-analytics',
+  src: 'https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID',
+  category: 'measurement',
+  async: true,
+  onLoad: () => {
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', 'GA_MEASUREMENT_ID');
+  }
+}
+```
+
+### Facebook Pixel
+
+```typescript
+{
+  id: 'facebook-pixel',
+  textContent: `
+    !function(f,b,e,v,n,t,s)
+    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+    n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];
+    s.parentNode.insertBefore(t,s)}(window, document,'script',
+    'https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', 'PIXEL_ID');
+    fbq('track', 'PageView');
+  `,
+  category: 'marketing'
+}
+```
+
+### Google Tag Manager (Always Load)
+
+```typescript
+{
+  id: 'google-tag-manager',
+  src: 'https://www.googletagmanager.com/gtm.js?id=GTM-XXXX',
+  category: 'measurement',
+  alwaysLoad: true,  // GTM manages its own consent
+  async: true
+}
+```
+
+### Callback-Only Script
+
+```typescript
+{
+  id: 'posthog-consent',
+  category: 'measurement',
+  callbackOnly: true,
+  onLoad: ({ hasConsent }) => {
+    if (hasConsent) {
+      posthog.opt_in_capturing();
+    }
+  },
+  onDelete: () => {
+    posthog.opt_out_capturing();
+  },
+  onConsentChange: ({ hasConsent }) => {
+    if (hasConsent) {
+      posthog.opt_in_capturing();
+    } else {
+      posthog.opt_out_capturing();
+    }
+  }
+}
+```
+
+### Complex Consent Conditions
+
+```typescript
+// Requires both measurement AND marketing
+{
+  id: 'advanced-analytics',
+  src: 'https://example.com/advanced-analytics.js',
+  category: { and: ['measurement', 'marketing'] }
+}
+
+// Requires measurement OR marketing
+{
+  id: 'basic-tracking',
+  src: 'https://example.com/basic-tracking.js',
+  category: { or: ['measurement', 'marketing'] }
+}
+
+// Requires NOT marketing (loads when marketing is disabled)
+{
+  id: 'privacy-focused-analytics',
+  src: 'https://example.com/privacy-analytics.js',
+  category: { not: 'marketing' }
+}
+```
+
+## Related
+
+- [createConsentManagerStore](/api/core/create-consent-store) - Create store with scripts
+- [PrivacyConsentState](/api/core/consent-state) - Store script management methods
+- [Types](/api/core/types) - Type definitions

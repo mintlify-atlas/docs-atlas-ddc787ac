@@ -1,122 +1,160 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "c15t",
+  "theme": "palm",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#3B82F6",
+    "light": "#60A5FA",
+    "dark": "#2563EB"
   },
-  "favicon": "/favicon.svg",
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/c15t/c15t"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/c15t/c15t"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Get Started",
             "pages": [
-              "index",
-              "quickstart",
-              "development"
+              "introduction",
+              "quickstart"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Framework Guides",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "frameworks/javascript/quickstart",
+              "frameworks/javascript/script-loader",
+              "frameworks/javascript/internationalization",
+              "frameworks/javascript/callbacks",
+              "frameworks/javascript/iframe-blocking",
+              "frameworks/react/quickstart",
+              "frameworks/react/headless",
+              "frameworks/react/components",
+              "frameworks/react/hooks",
+              "frameworks/nextjs/quickstart",
+              "frameworks/nextjs/app-router",
+              "frameworks/nextjs/pages-router",
+              "frameworks/nextjs/server-components"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Core Concepts",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "concepts/consent-state",
+              "concepts/consent-types",
+              "concepts/storage",
+              "concepts/compliance-regions"
             ]
           },
           {
-            "group": "AI tools",
+            "group": "Integrations",
             "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "integrations/overview",
+              "integrations/google-tag-manager",
+              "integrations/posthog",
+              "integrations/meta-pixel",
+              "integrations/tiktok-pixel",
+              "integrations/linkedin-insights",
+              "integrations/microsoft-uet",
+              "integrations/x-pixel"
+            ]
+          },
+          {
+            "group": "Self-Hosting",
+            "pages": [
+              "self-host/overview",
+              "self-host/v2/quickstart",
+              "self-host/v2/configuration",
+              "self-host/v2/database-adapters",
+              "self-host/v2/deployment"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "API Reference",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Core Package",
             "pages": [
-              "api-reference/introduction"
+              "api/core/create-consent-store",
+              "api/core/consent-state",
+              "api/core/script-loader",
+              "api/core/cookie-storage",
+              "api/core/types"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "React Package",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "api/react/provider",
+              "api/react/cookie-banner",
+              "api/react/consent-manager-dialog",
+              "api/react/consent-manager-widget",
+              "api/react/hooks"
+            ]
+          },
+          {
+            "group": "Next.js Package",
+            "pages": [
+              "api/nextjs/consent-provider",
+              "api/nextjs/server-components",
+              "api/nextjs/middleware"
+            ]
+          },
+          {
+            "group": "Backend Package",
+            "pages": [
+              "api/backend/core",
+              "api/backend/router",
+              "api/backend/contracts",
+              "api/backend/database-adapters"
+            ]
+          },
+          {
+            "group": "Node SDK",
+            "pages": [
+              "api/node-sdk/client",
+              "api/node-sdk/methods",
+              "api/node-sdk/types"
+            ]
+          },
+          {
+            "group": "CLI",
+            "pages": [
+              "api/cli/commands",
+              "api/cli/init",
+              "api/cli/generate",
+              "api/cli/migrate"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Contributing",
+        "groups": [
+          {
+            "group": "Open Source",
+            "pages": [
+              "oss/contributing",
+              "oss/code-of-conduct",
+              "oss/architecture",
+              "oss/development-setup"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    ]
   }
 }

@@ -1,0 +1,521 @@
+---
+title: 'Script Loader'
+description: 'Dynamically load tracking scripts based on user consent preferences'
+---
+
+# Script Loader
+
+The Script Loader automatically loads and unloads third-party scripts based on user consent. This ensures you only load tracking scripts after users have given permission.
+
+## Quick Start
+
+Define scripts in your store configuration:
+
+```typescript
+import { createConsentManagerStore, configureConsentManager } from 'c15t';
+
+const manager = configureConsentManager({
+  backendURL: '/api/c15t',
+});
+
+const store = createConsentManagerStore(manager, {
+  scripts: [
+    {
+      id: 'google-analytics',
+      src: 'https://www.googletagmanager.com/gtag/js?id=GA-XXXXX',
+      category: 'measurement',
+    },
+    {
+      id: 'facebook-pixel',
+      textContent: `
+        !function(f,b,e,v,n,t,s)
+        {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+        n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+        n.queue=[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t,s)}(window, document,'script',
+        'https://connect.facebook.net/en_US/fbevents.js');
+        fbq('init', '123456789012345');
+        fbq('track', 'PageView');
+      `,
+      category: 'marketing',
+    },
+  ],
+});
+```
+
+## Script Types
+
+The Script Loader supports three types of scripts:
+
+### 1. External Scripts
+
+Load scripts from a URL:
+
+```typescript
+{
+  id: 'google-analytics',
+  src: 'https://www.googletagmanager.com/gtag/js?id=GA-XXXXX',
+  category: 'measurement',
+  async: true,
+  defer: true,
+}
+```
+
+### 2. Inline Scripts
+
+Execute inline JavaScript code:
+
+```typescript
+{
+  id: 'inline-script',
+  textContent: 'console.log("User accepted cookies");',
+  category: 'necessary',
+}
+```
+
+### 3. Callback-Only Scripts
+
+Execute callbacks without adding a script tag (useful for existing libraries):
+
+```typescript
+{
+  id: 'posthog-consent',
+  category: 'measurement',
+  callbackOnly: true,
+  onLoad: ({ hasConsent }) => {
+    if (hasConsent) {
+      window.posthog?.opt_in_capturing();
+    }
+  },
+  onDelete: () => {
+    window.posthog?.opt_out_capturing();
+  },
+}
+```
+
+See `src/libs/script-loader/types.ts:44`
+
+## Script Configuration
+
+### Required Fields
+
+<ParamField path="id" type="string" required>
+  Unique identifier for the script
+</ParamField>
+
+<ParamField path="category" type="HasCondition<AllConsentNames>" required>
+  Consent category or condition required to load this script. Can be:
+  - A single category: `'measurement'`
+  - AND condition: `{ and: ['functionality', 'measurement'] }`
+  - OR condition: `{ or: ['marketing', 'experience'] }`
+  - NOT condition: `{ not: 'marketing' }`
+</ParamField>
+
+<ParamField path="src" type="string">
+  URL of the external script to load (required if `textContent` and `callbackOnly` are not provided)
+</ParamField>
+
+<ParamField path="textContent" type="string">
+  Inline JavaScript code to execute (required if `src` and `callbackOnly` are not provided)
+</ParamField>
+
+### Optional Fields
+
+<ParamField path="callbackOnly" type="boolean" default="false">
+  When `true`, no script tag is added to the DOM. Only callbacks are executed based on consent state changes.
+</ParamField>
+
+<ParamField path="alwaysLoad" type="boolean" default="false">
+  When `true`, the script loads immediately regardless of consent state. Useful for scripts like Google Tag Manager that manage their own consent.
+</ParamField>
+
+<ParamField path="persistAfterConsentRevoked" type="boolean" default="false">
+  When `true`, the script element remains in the DOM after consent is revoked (only callbacks are triggered)
+</ParamField>
+
+<ParamField path="async" type="boolean" default="false">
+  Whether to load the script asynchronously
+</ParamField>
+
+<ParamField path="defer" type="boolean" default="false">
+  Whether to defer script execution
+</ParamField>
+
+<ParamField path="fetchPriority" type="'high' | 'low' | 'auto'">
+  Browser resource loading priority hint
+</ParamField>
+
+<ParamField path="target" type="'head' | 'body'" default="'head'">
+  Where to inject the script in the DOM
+</ParamField>
+
+<ParamField path="anonymizeId" type="boolean" default="true">
+  Use an anonymized ID for the script element to avoid ad blockers
+</ParamField>
+
+<ParamField path="nonce" type="string">
+  Content Security Policy nonce value
+</ParamField>
+
+<ParamField path="attributes" type="Record<string, string>">
+  Additional HTML attributes to add to the script element
+</ParamField>
+
+## Callbacks
+
+### onBeforeLoad
+
+Called before the script is added to the DOM:
+
+```typescript
+{
+  id: 'analytics',
+  src: 'https://analytics.example.com/script.js',
+  category: 'measurement',
+  onBeforeLoad: ({ id, elementId, hasConsent, consents }) => {
+    console.log(`Loading script: ${id}`);
+    console.log(`Has consent: ${hasConsent}`);
+  },
+}
+```
+
+See `src/libs/script-loader/types.ts:159`
+
+### onLoad
+
+Called when the script loads successfully:
+
+```typescript
+{
+  id: 'analytics',
+  src: 'https://analytics.example.com/script.js',
+  category: 'measurement',
+  onLoad: ({ element, consents }) => {
+    console.log('Analytics script loaded');
+    // Initialize tracking
+    window.gtag('config', 'GA-XXXXX');
+  },
+}
+```
+
+See `src/libs/script-loader/types.ts:164`
+
+### onDelete
+
+Called when the script is removed (consent revoked):
+
+```typescript
+{
+  id: 'analytics',
+  src: 'https://analytics.example.com/script.js',
+  category: 'measurement',
+  onDelete: ({ id, consents }) => {
+    console.log(`Removing script: ${id}`);
+    // Clean up tracking
+    delete window.gtag;
+  },
+}
+```
+
+See `src/libs/script-loader/types.ts:171`
+
+### onError
+
+Called if the script fails to load:
+
+```typescript
+{
+  id: 'analytics',
+  src: 'https://analytics.example.com/script.js',
+  category: 'measurement',
+  onError: ({ error, id }) => {
+    console.error(`Failed to load ${id}:`, error);
+  },
+}
+```
+
+See `src/libs/script-loader/types.ts:177`
+
+### onConsentChange
+
+Called whenever consent state changes for loaded scripts:
+
+```typescript
+{
+  id: 'analytics',
+  src: 'https://analytics.example.com/script.js',
+  category: 'measurement',
+  onConsentChange: ({ hasConsent, consents }) => {
+    if (consents.measurement) {
+      console.log('Analytics consent granted');
+      window.gtag('consent', 'update', {
+        analytics_storage: 'granted'
+      });
+    } else {
+      console.log('Analytics consent revoked');
+      window.gtag('consent', 'update', {
+        analytics_storage: 'denied'
+      });
+    }
+  },
+}
+```
+
+See `src/libs/script-loader/types.ts:200`
+
+## Complex Consent Conditions
+
+Use logical operators to create complex consent requirements:
+
+### AND Condition
+
+Requires ALL specified consents:
+
+```typescript
+{
+  id: 'advanced-analytics',
+  src: 'https://example.com/advanced.js',
+  category: { and: ['functionality', 'measurement'] },
+}
+```
+
+### OR Condition
+
+Requires ANY of the specified consents:
+
+```typescript
+{
+  id: 'social-widget',
+  src: 'https://example.com/social.js',
+  category: { or: ['marketing', 'experience'] },
+}
+```
+
+### NOT Condition
+
+Loads when the specified consent is NOT granted:
+
+```typescript
+{
+  id: 'privacy-notice',
+  textContent: 'console.log("Tracking disabled");',
+  category: { not: 'marketing' },
+}
+```
+
+### Nested Conditions
+
+Combine operators for complex logic:
+
+```typescript
+{
+  id: 'complex-script',
+  src: 'https://example.com/complex.js',
+  category: {
+    and: [
+      'necessary',
+      { or: ['measurement', 'marketing'] },
+      { not: 'functionality' }
+    ]
+  },
+}
+```
+
+## Programmatic Control
+
+Manually control scripts using store methods:
+
+### Update Scripts
+
+```typescript
+// Update all scripts based on current consent state
+const result = store.getState().updateScripts();
+console.log('Loaded:', result.loaded);
+console.log('Unloaded:', result.unloaded);
+```
+
+### Set Scripts Dynamically
+
+```typescript
+// Add or replace scripts at runtime
+store.getState().setScripts([
+  {
+    id: 'new-script',
+    src: 'https://example.com/new.js',
+    category: 'measurement',
+  },
+]);
+```
+
+### Reload a Specific Script
+
+```typescript
+// Reload a script (useful for testing)
+const success = store.getState().reloadScript('google-analytics');
+```
+
+## Advanced Examples
+
+### Google Tag Manager with Consent Mode
+
+```typescript
+{
+  id: 'gtm',
+  src: `https://www.googletagmanager.com/gtm.js?id=${GTM_ID}`,
+  category: 'necessary',
+  alwaysLoad: true, // GTM manages its own consent
+  onBeforeLoad: () => {
+    // Initialize data layer
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({
+      'gtm.start': new Date().getTime(),
+      event: 'gtm.js'
+    });
+  },
+  onConsentChange: ({ consents }) => {
+    // Update GTM consent mode
+    window.dataLayer.push({
+      event: 'consent_update',
+      analytics_storage: consents.measurement ? 'granted' : 'denied',
+      ad_storage: consents.marketing ? 'granted' : 'denied',
+    });
+  },
+}
+```
+
+See test example at `src/libs/script-loader/__tests__/core.test.ts:26`
+
+### Meta Pixel with Inline Code
+
+```typescript
+{
+  id: 'meta-pixel',
+  textContent: `
+    !function(f,b,e,v,n,t,s)
+    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+    n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];
+    s.parentNode.insertBefore(t,s)}(window, document,'script',
+    'https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', '${PIXEL_ID}');
+    fbq('track', 'PageView');
+  `,
+  category: 'marketing',
+}
+```
+
+See test example at `src/libs/script-loader/__tests__/core.test.ts:60`
+
+### PostHog with Callback-Only Control
+
+```typescript
+{
+  id: 'posthog-consent',
+  category: 'measurement',
+  callbackOnly: true,
+  onLoad: () => {
+    if (window.posthog) {
+      window.posthog.opt_in_capturing();
+    }
+  },
+  onDelete: () => {
+    if (window.posthog) {
+      window.posthog.opt_out_capturing();
+    }
+  },
+  onConsentChange: ({ hasConsent }) => {
+    if (window.posthog) {
+      if (hasConsent) {
+        window.posthog.opt_in_capturing();
+      } else {
+        window.posthog.opt_out_capturing();
+      }
+    }
+  },
+}
+```
+
+See test example at `src/libs/script-loader/__tests__/core.test.ts:75`
+
+## Direct API Usage
+
+For advanced use cases, you can use the script loader API directly:
+
+```typescript
+import { loadScripts, unloadScripts, isScriptLoaded } from 'c15t';
+
+const scripts = [
+  {
+    id: 'analytics',
+    src: 'https://analytics.example.com/script.js',
+    category: 'measurement',
+  },
+];
+
+const consents = {
+  necessary: true,
+  measurement: true,
+  marketing: false,
+  functionality: false,
+  experience: false,
+};
+
+// Load scripts
+const loadedIds = loadScripts(scripts, consents);
+console.log('Loaded:', loadedIds);
+
+// Check if loaded
+if (isScriptLoaded('analytics')) {
+  console.log('Analytics script is active');
+}
+
+// Unload scripts
+const unloadedIds = unloadScripts(scripts, { ...consents, measurement: false });
+console.log('Unloaded:', unloadedIds);
+```
+
+See API reference at:
+- `src/libs/script-loader/core.ts:loadScripts`
+- `src/libs/script-loader/core.ts:unloadScripts`
+- `src/libs/script-loader/core.ts:isScriptLoaded`
+
+## Type Definitions
+
+```typescript
+interface Script {
+  id: string;
+  src?: string;
+  textContent?: string;
+  category: HasCondition<AllConsentNames>;
+  callbackOnly?: boolean;
+  persistAfterConsentRevoked?: boolean;
+  alwaysLoad?: boolean;
+  fetchPriority?: 'high' | 'low' | 'auto';
+  attributes?: Record<string, string>;
+  async?: boolean;
+  defer?: boolean;
+  nonce?: string;
+  anonymizeId?: boolean;
+  target?: 'head' | 'body';
+  onBeforeLoad?: (info: ScriptCallbackInfo) => void;
+  onLoad?: (info: ScriptCallbackInfo) => void;
+  onDelete?: (info: ScriptCallbackInfo) => void;
+  onError?: (info: ScriptCallbackInfo) => void;
+  onConsentChange?: (info: ScriptCallbackInfo) => void;
+}
+
+interface ScriptCallbackInfo {
+  id: string;
+  elementId: string;
+  hasConsent: boolean;
+  consents: ConsentState;
+  element?: HTMLScriptElement;
+  error?: Error;
+}
+```
+
+See full type definitions at `src/libs/script-loader/types.ts:44`

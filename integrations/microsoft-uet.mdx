@@ -1,0 +1,314 @@
+---
+title: "Microsoft UET"
+description: "Integrate Microsoft Universal Event Tracking (UET) for Bing Ads"
+icon: "microsoft"
+---
+
+## Overview
+
+Microsoft Universal Event Tracking (UET) integration for Bing Ads conversion tracking with built-in consent management. This integration is persistent and uses Microsoft's consent mode API.
+
+<Info>
+  Microsoft UET is categorized as **marketing** by default.
+</Info>
+
+## Installation
+
+<CodeGroup>
+```bash npm
+npm install @c15t/scripts c15t
+```
+
+```bash yarn
+yarn add @c15t/scripts c15t
+```
+
+```bash pnpm
+pnpm add @c15t/scripts c15t
+```
+
+```bash bun
+bun add @c15t/scripts c15t
+```
+</CodeGroup>
+
+## Basic usage
+
+<CodeGroup>
+```typescript React
+import { loadScripts } from 'c15t';
+import { microsoftUet } from '@c15t/scripts/microsoft-uet';
+import { useEffect } from 'react';
+
+export function App() {
+  useEffect(() => {
+    const uetScript = microsoftUet({
+      id: '12345678',
+    });
+
+    loadScripts([uetScript], {
+      consents: {
+        necessary: true,
+        functionality: false,
+        measurement: false,
+        marketing: true, // Microsoft UET requires marketing consent
+        experience: false,
+      },
+    });
+  }, []);
+
+  return <div>Your app</div>;
+}
+```
+
+```typescript Next.js
+import { loadScripts } from 'c15t';
+import { microsoftUet } from '@c15t/scripts/microsoft-uet';
+import { useEffect } from 'react';
+
+export default function RootLayout({ children }) {
+  useEffect(() => {
+    const uetScript = microsoftUet({
+      id: '12345678',
+    });
+
+    loadScripts([uetScript], {
+      consents: {
+        necessary: true,
+        functionality: false,
+        measurement: false,
+        marketing: true,
+        experience: false,
+      },
+    });
+  }, []);
+
+  return <html><body>{children}</body></html>;
+}
+```
+
+```typescript Vanilla JS
+import { loadScripts } from 'c15t';
+import { microsoftUet } from '@c15t/scripts/microsoft-uet';
+
+const uetScript = microsoftUet({
+  id: '12345678',
+});
+
+loadScripts([uetScript], {
+  consents: {
+    necessary: true,
+    functionality: false,
+    measurement: false,
+    marketing: true,
+    experience: false,
+  },
+});
+```
+</CodeGroup>
+
+## Configuration
+
+### Options
+
+<ParamField path="id" type="string" required>
+  Your Microsoft UET Tag ID (numeric string).
+  
+  **Example**: `12345678`
+</ParamField>
+
+<ParamField path="script" type="Partial<Script>">
+  Override or extend default script values.
+  
+  **Defaults**:
+  - `id`: `'microsoft-uet'`
+  - `category`: `'marketing'`
+  - `src`: `//bat.bing.com/bat.js`
+  - `persistAfterConsentRevoked`: Managed via consent API
+</ParamField>
+
+## Tracking events
+
+Use the UET tag queue to track custom events:
+
+```typescript
+// Track custom event
+window.uetq = window.uetq || [];
+window.uetq.push('event', 'purchase', {
+  event_category: 'ecommerce',
+  event_label: 'product-123',
+  event_value: 99.99,
+  revenue_value: 99.99,
+  currency: 'USD',
+});
+```
+
+## Conversion goals
+
+Set up conversion goals in Microsoft Advertising and track them:
+
+### Page load goals
+
+Page load goals are tracked automatically when UET loads on the target page.
+
+### Custom event goals
+
+```typescript
+// Track custom event goal
+window.uetq?.push('event', 'sign_up', {
+  event_category: 'engagement',
+  event_label: 'newsletter',
+});
+```
+
+### E-commerce tracking
+
+```typescript
+// Track purchase with revenue
+window.uetq?.push('event', 'purchase', {
+  revenue_value: 99.99,
+  currency: 'USD',
+});
+
+// Track with enhanced e-commerce data
+window.uetq?.push('event', 'purchase', {
+  ecomm_prodid: 'product-123',
+  ecomm_pagetype: 'purchase',
+  revenue_value: 99.99,
+  currency: 'USD',
+});
+```
+
+## Enhanced conversions
+
+Send hashed customer data for enhanced conversion tracking:
+
+```typescript
+window.uetq?.push('set', {
+  pid: {
+    em: 'hashed-email@example.com', // SHA-256 hashed email
+    ph: 'hashed-phone-number', // SHA-256 hashed phone
+  },
+});
+```
+
+## Advanced usage
+
+### Variable revenue tracking
+
+Track dynamic revenue values:
+
+```typescript
+function trackPurchase(orderValue: number, orderId: string) {
+  window.uetq?.push('event', 'purchase', {
+    revenue_value: orderValue,
+    currency: 'USD',
+    transaction_id: orderId,
+  });
+}
+
+// Usage
+trackPurchase(149.99, 'order-789');
+```
+
+### E-commerce page types
+
+Tag different page types for e-commerce tracking:
+
+```typescript
+// Product page
+window.uetq?.push('event', '', {
+  ecomm_prodid: 'product-123',
+  ecomm_pagetype: 'product',
+  ecomm_totalvalue: 49.99,
+});
+
+// Cart page
+window.uetq?.push('event', '', {
+  ecomm_prodid: ['product-123', 'product-456'],
+  ecomm_pagetype: 'cart',
+  ecomm_totalvalue: 99.98,
+});
+
+// Purchase confirmation
+window.uetq?.push('event', '', {
+  ecomm_prodid: ['product-123', 'product-456'],
+  ecomm_pagetype: 'purchase',
+  ecomm_totalvalue: 99.98,
+});
+```
+
+### SPA tracking
+
+Track page views in single-page applications:
+
+```typescript
+// Track virtual page view
+window.uetq?.push('event', 'page_view', {
+  page_path: '/virtual/path',
+});
+```
+
+### Custom callbacks
+
+```typescript
+const uetScript = microsoftUet({
+  id: '12345678',
+  script: {
+    onLoad: ({ elementId }) => {
+      console.log('Microsoft UET loaded:', elementId);
+    },
+    onDelete: () => {
+      console.log('Microsoft UET consent revoked');
+    },
+  },
+});
+```
+
+## How it works
+
+1. **On load**: Creates consent script with `ad_storage: 'granted'` and loads UET tag with `enableAutoSpaTracking: true`
+2. **Persistent**: Script uses consent API to manage tracking state
+3. **On consent change**: Updates consent via `uetq.push('consent', 'update', { ad_storage: 'granted/denied' })`
+4. **On delete**: Calls `uetq.push('consent', 'update', { ad_storage: 'denied' })` to stop tracking
+
+<Info>
+  Microsoft UET uses a consent API similar to Google's consent mode. The script manages consent state without full reload.
+</Info>
+
+## Finding your UET Tag ID
+
+1. Log in to [Microsoft Advertising](https://ui.ads.microsoft.com/)
+2. Go to **Tools** → **UET Tag**
+3. Your Tag ID is displayed in the tag list
+
+## TypeScript
+
+Full TypeScript support:
+
+```typescript
+import type { Script } from 'c15t';
+import { microsoftUet, type MicrosoftUetOptions } from '@c15t/scripts/microsoft-uet';
+
+const options: MicrosoftUetOptions = {
+  id: '12345678',
+};
+
+const script: Script = microsoftUet(options);
+```
+
+## Resources
+
+<CardGroup cols={2}>
+  <Card title="UET Documentation" icon="microsoft" href="https://learn.microsoft.com/en-us/advertising/guides/universal-event-tracking">
+    Official Microsoft UET documentation
+  </Card>
+  
+  <Card title="Event Tracking" icon="bolt" href="https://help.ads.microsoft.com/apex/index/3/en/56684">
+    Custom event tracking guide
+  </Card>
+  
+  <Card title="Source Code" icon="github" href="https://github.com/c15t/c15t/blob/main/packages/scripts/src/microsoft-uet.ts">
+    View the integration source code
+  </Card>
+</CardGroup>

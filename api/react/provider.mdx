@@ -1,0 +1,270 @@
+---
+title: ConsentManagerProvider
+description: Provider component for initializing and managing consent state throughout your React application.
+---
+
+The `ConsentManagerProvider` is the core provider component that initializes and manages the consent management system. It must wrap your application or the part of your application that needs consent management functionality.
+
+## Import
+
+```tsx
+import { ConsentManagerProvider } from '@c15t/react';
+```
+
+## Usage
+
+```tsx
+import { ConsentManagerProvider } from '@c15t/react';
+
+function App() {
+  return (
+    <ConsentManagerProvider
+      options={{
+        mode: 'c15t',
+        backendURL: '/api/c15t',
+      }}
+    >
+      {/* Your app content */}
+    </ConsentManagerProvider>
+  );
+}
+```
+
+## Props
+
+<ParamField path="options" type="ConsentManagerOptions" required>
+  Configuration options for the consent manager. See [Configuration Options](#configuration-options) below.
+</ParamField>
+
+<ParamField path="children" type="ReactNode" required>
+  React children to render within the provider.
+</ParamField>
+
+## Configuration Options
+
+### Core Options
+
+<ParamField path="mode" type="'c15t' | 'offline' | 'custom'" required>
+  The operating mode for the consent manager:
+  - `c15t`: Use c15t backend services
+  - `offline`: Use only local storage without backend
+  - `custom`: Use custom endpoint handlers
+</ParamField>
+
+<ParamField path="backendURL" type="string">
+  The backend URL for c15t API endpoints. Required when `mode` is `c15t`.
+  
+  **Default:** `/api/c15t`
+</ParamField>
+
+<ParamField path="enabled" type="boolean">
+  Whether c15t should be active. When set to `false`, all consents will be treated as granted and no consent UI will be shown.
+  
+  **Default:** `true`
+</ParamField>
+
+### React UI Options
+
+<ParamField path="react.theme" type="CookieBannerTheme & ConsentManagerWidgetTheme & ConsentManagerDialogTheme">
+  Visual theme to apply to all consent UI components.
+</ParamField>
+
+<ParamField path="react.disableAnimation" type="boolean">
+  Whether to disable animations in consent UI components.
+  
+  **Default:** `false`
+</ParamField>
+
+<ParamField path="react.scrollLock" type="boolean">
+  Whether to lock scroll when dialogs are open.
+  
+  **Default:** `false`
+</ParamField>
+
+<ParamField path="react.trapFocus" type="boolean">
+  Whether to trap focus within dialogs for accessibility.
+  
+  **Default:** `true`
+</ParamField>
+
+<ParamField path="react.colorScheme" type="'light' | 'dark' | 'system'">
+  Color scheme preference. Forces the theme to be light, dark, or follow system preference.
+</ParamField>
+
+<ParamField path="react.noStyle" type="boolean">
+  Whether to disable default styles completely.
+  
+  **Default:** `false`
+</ParamField>
+
+### Translation Options
+
+<ParamField path="translations" type="Partial<TranslationConfig>">
+  Custom translations for consent UI text. Allows you to customize or translate all user-facing text.
+</ParamField>
+
+### Consent Configuration
+
+<ParamField path="consentCategories" type="AllConsentNames[]">
+  Consent categories to show in the consent banner.
+  
+  **Default:** `['necessary', 'marketing']`
+</ParamField>
+
+<ParamField path="ignoreGeoLocation" type="boolean">
+  Whether to ignore geo location. Will always show the consent banner regardless of user's location.
+  
+  **Default:** `false`
+</ParamField>
+
+<ParamField path="experimental_globalPrivacyControl" type="boolean">
+  Respect the Global Privacy Signal in opt-out jurisdictions like California (CCPA).
+  
+  **Default:** `false`
+</ParamField>
+
+### Script Management
+
+<ParamField path="scripts" type="Script[]">
+  Dynamically load scripts based on consent state. For scripts such as Google Tag Manager, Meta Pixel, etc.
+  
+  See [Script Loader documentation](https://c15t.com/docs/frameworks/react/script-loader) for details.
+</ParamField>
+
+<ParamField path="unstable_googleTagManager" type="GTMConfiguration">
+  Google Tag Manager configuration. When set, the consent manager will automatically setup Google Tag Manager.
+</ParamField>
+
+### Storage Configuration
+
+<ParamField path="storageConfig" type="StorageConfig">
+  Configure storage behavior including storage key and storage type.
+</ParamField>
+
+### User Management
+
+<ParamField path="user" type="User">
+  The user's information, usually your own internal ID from your auth provider. Can also be set later using the `identifyUser` method.
+</ParamField>
+
+### Legal Links
+
+<ParamField path="legalLinks" type="LegalLinks">
+  Display links to various legal documents such as privacy policy, terms of service, etc. across the consent manager.
+</ParamField>
+
+### Callbacks
+
+<ParamField path="callbacks" type="Callbacks">
+  Callbacks for consent manager events. Allows you to hook into consent state changes and other events.
+</ParamField>
+
+<ParamField path="overrides" type="Overrides">
+  Forcefully set values like country, region, language for the consent manager. These values will override the values detected from the browser.
+</ParamField>
+
+## Examples
+
+### Basic Setup
+
+```tsx
+import { ConsentManagerProvider } from '@c15t/react';
+
+function App() {
+  return (
+    <ConsentManagerProvider
+      options={{
+        mode: 'c15t',
+        backendURL: '/api/c15t',
+      }}
+    >
+      <YourApp />
+    </ConsentManagerProvider>
+  );
+}
+```
+
+### Offline Mode
+
+```tsx
+import { ConsentManagerProvider } from '@c15t/react';
+
+function App() {
+  return (
+    <ConsentManagerProvider
+      options={{
+        mode: 'offline',
+        consentCategories: ['necessary', 'analytics', 'marketing'],
+      }}
+    >
+      <YourApp />
+    </ConsentManagerProvider>
+  );
+}
+```
+
+### With Custom Theme
+
+```tsx
+import { ConsentManagerProvider } from '@c15t/react';
+
+function App() {
+  return (
+    <ConsentManagerProvider
+      options={{
+        mode: 'c15t',
+        backendURL: '/api/c15t',
+        react: {
+          theme: {
+            banner: {
+              root: {
+                backgroundColor: '#1a1a1a',
+              },
+            },
+          },
+          colorScheme: 'dark',
+          disableAnimation: false,
+        },
+      }}
+    >
+      <YourApp />
+    </ConsentManagerProvider>
+  );
+}
+```
+
+### With Callbacks
+
+```tsx
+import { ConsentManagerProvider } from '@c15t/react';
+
+function App() {
+  return (
+    <ConsentManagerProvider
+      options={{
+        mode: 'c15t',
+        backendURL: '/api/c15t',
+        callbacks: {
+          onConsentSet: (response) => {
+            console.log('Consent updated:', response);
+          },
+          onConsentLoad: (state) => {
+            console.log('Consent loaded:', state);
+          },
+        },
+      }}
+    >
+      <YourApp />
+    </ConsentManagerProvider>
+  );
+}
+```
+
+## Type Definitions
+
+```tsx
+import type {
+  ConsentManagerOptions,
+  ConsentManagerProviderProps,
+} from '@c15t/react';
+```

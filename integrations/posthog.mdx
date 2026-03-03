@@ -1,0 +1,312 @@
+---
+title: "PostHog"
+description: "Integrate PostHog analytics with opt-in/opt-out consent support"
+icon: "chart-line"
+---
+
+## Overview
+
+PostHog integration with built-in consent management using PostHog's opt-in/opt-out capturing API. This integration automatically handles consent state and prevents tracking until consent is granted.
+
+<Info>
+  PostHog is categorized as **measurement** by default.
+</Info>
+
+## Installation
+
+<CodeGroup>
+```bash npm
+npm install @c15t/scripts c15t
+```
+
+```bash yarn
+yarn add @c15t/scripts c15t
+```
+
+```bash pnpm
+pnpm add @c15t/scripts c15t
+```
+
+```bash bun
+bun add @c15t/scripts c15t
+```
+</CodeGroup>
+
+## Basic usage
+
+<CodeGroup>
+```typescript React
+import { loadScripts } from 'c15t';
+import { posthog } from '@c15t/scripts/posthog';
+import { useEffect } from 'react';
+
+export function App() {
+  useEffect(() => {
+    const posthogScript = posthog({
+      id: 'phc_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      apiHost: 'https://eu.i.posthog.com',
+      defaults: '',
+      options: {
+        person_profiles: 'identified_only',
+      },
+    });
+
+    loadScripts([posthogScript], {
+      consents: {
+        necessary: true,
+        functionality: false,
+        measurement: true, // PostHog requires measurement consent
+        marketing: false,
+        experience: false,
+      },
+    });
+  }, []);
+
+  return <div>Your app</div>;
+}
+```
+
+```typescript Next.js
+import { loadScripts } from 'c15t';
+import { posthog } from '@c15t/scripts/posthog';
+import { useEffect } from 'react';
+
+export default function RootLayout({ children }) {
+  useEffect(() => {
+    const posthogScript = posthog({
+      id: 'phc_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      apiHost: 'https://eu.i.posthog.com',
+      defaults: '',
+      options: {},
+    });
+
+    loadScripts([posthogScript], {
+      consents: {
+        necessary: true,
+        functionality: false,
+        measurement: true,
+        marketing: false,
+        experience: false,
+      },
+    });
+  }, []);
+
+  return <html><body>{children}</body></html>;
+}
+```
+
+```typescript Vanilla JS
+import { loadScripts } from 'c15t';
+import { posthog } from '@c15t/scripts/posthog';
+
+const posthogScript = posthog({
+  id: 'phc_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+  apiHost: 'https://eu.i.posthog.com',
+  defaults: '',
+  options: {},
+});
+
+loadScripts([posthogScript], {
+  consents: {
+    necessary: true,
+    functionality: false,
+    measurement: true,
+    marketing: false,
+    experience: false,
+  },
+});
+```
+</CodeGroup>
+
+## Configuration
+
+### Options
+
+<ParamField path="id" type="string" required>
+  Your PostHog project token. Begins with `phc_`.
+  
+  **Example**: `phc_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`
+</ParamField>
+
+<ParamField path="apiHost" type="string" required>
+  Your PostHog API host URL.
+  
+  **Example**: `https://eu.i.posthog.com` (EU Cloud) or `https://us.i.posthog.com` (US Cloud)
+</ParamField>
+
+<ParamField path="defaults" type="string" required>
+  Default configuration string for PostHog.
+  
+  **Example**: `''` (empty string for default behavior)
+</ParamField>
+
+<ParamField path="options" type="Record<string, unknown>" required>
+  Additional PostHog initialization options.
+  
+  **Example**: `{ person_profiles: 'identified_only', autocapture: false }`
+</ParamField>
+
+<ParamField path="script" type="Partial<Script>">
+  Override or extend default script values.
+  
+  **Defaults**:
+  - `id`: `'posthog'`
+  - `category`: `'measurement'`
+  - `src`: Automatically constructed from `apiHost`
+  - `async`: `true`
+  - `alwaysLoad`: `true`
+</ParamField>
+
+## Advanced usage
+
+### Person profiles configuration
+
+Control when PostHog creates person profiles:
+
+```typescript
+const posthogScript = posthog({
+  id: 'phc_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+  apiHost: 'https://eu.i.posthog.com',
+  defaults: '',
+  options: {
+    person_profiles: 'identified_only', // Only create profiles for identified users
+  },
+});
+```
+
+### Disable autocapture
+
+Disable automatic event tracking:
+
+```typescript
+const posthogScript = posthog({
+  id: 'phc_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+  apiHost: 'https://eu.i.posthog.com',
+  defaults: '',
+  options: {
+    autocapture: false, // Manually track events only
+  },
+});
+```
+
+### Session recording with consent
+
+Enable session recording only when consent is granted:
+
+```typescript
+const posthogScript = posthog({
+  id: 'phc_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+  apiHost: 'https://eu.i.posthog.com',
+  defaults: '',
+  options: {
+    session_recording: {
+      recordCrossOriginIframes: true,
+    },
+  },
+});
+```
+
+### Custom callbacks
+
+Add custom logic to the script lifecycle:
+
+```typescript
+const posthogScript = posthog({
+  id: 'phc_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+  apiHost: 'https://eu.i.posthog.com',
+  defaults: '',
+  options: {},
+  script: {
+    onLoad: ({ hasConsent }) => {
+      if (hasConsent) {
+        console.log('PostHog loaded and tracking enabled');
+      }
+    },
+    onConsentChange: ({ hasConsent }) => {
+      console.log('PostHog consent changed:', hasConsent);
+    },
+  },
+});
+```
+
+### Self-hosted PostHog
+
+Use with self-hosted PostHog instance:
+
+```typescript
+const posthogScript = posthog({
+  id: 'phc_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+  apiHost: 'https://analytics.yourdomain.com',
+  defaults: '',
+  options: {},
+});
+```
+
+## How it works
+
+1. **Before script loads**: Creates placeholder PostHog object to queue events
+2. **On load**: Initializes PostHog with your configuration and calls `opt_in_capturing()` if consent is granted
+3. **On consent change**: Calls `opt_in_capturing()` or `opt_out_capturing()` based on consent state
+4. **Consent check**: Compares current consent status to prevent redundant API calls
+
+<Info>
+  The script always loads (as `alwaysLoad: true`), but tracking is controlled via PostHog's opt-in/opt-out API based on the **measurement** consent category.
+</Info>
+
+## Tracking events
+
+After consent is granted, use PostHog's standard API:
+
+```typescript
+// Track custom event
+window.posthog.capture('button_clicked', {
+  button_name: 'sign_up',
+});
+
+// Identify user
+window.posthog.identify('user_123', {
+  email: 'user@example.com',
+});
+
+// Set person properties
+window.posthog.people.set({
+  plan: 'premium',
+});
+```
+
+## TypeScript
+
+Full TypeScript support with type inference:
+
+```typescript
+import type { Script } from 'c15t';
+import { posthog } from '@c15t/scripts/posthog';
+import type { PosthogConsentOptions } from '@c15t/scripts/posthog';
+
+const options: PosthogConsentOptions = {
+  id: 'phc_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+  apiHost: 'https://eu.i.posthog.com',
+  defaults: '',
+  options: {
+    person_profiles: 'identified_only',
+  },
+};
+
+const script: Script = posthog(options);
+```
+
+## Resources
+
+<CardGroup cols={2}>
+  <Card title="PostHog Consent" icon="shield-check" href="https://posthog.com/docs/libraries/js#opt-in-capturing">
+    Learn about PostHog's opt-in capturing
+  </Card>
+  
+  <Card title="PostHog Documentation" icon="book" href="https://posthog.com/docs">
+    Official PostHog documentation
+  </Card>
+  
+  <Card title="Source Code" icon="github" href="https://github.com/c15t/c15t/blob/main/packages/scripts/src/posthog.ts">
+    View the integration source code
+  </Card>
+</CardGroup>

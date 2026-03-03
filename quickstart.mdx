@@ -1,80 +1,433 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: "Quick start"
+description: "Get a working cookie banner in under 5 minutes with c15t"
 ---
 
-## Get started in three steps
+## Get your cookie banner running
 
-Get your documentation site running locally and make your first customization.
+This guide will help you set up a working consent banner quickly. Choose your framework to get started.
 
-### Step 1: Set up your local environment
+<Tabs>
+  <Tab title="React">
+    <Steps>
+      <Step title="Install c15t">
+        Install the React package using your preferred package manager:
+        
+        <CodeGroup>
+        ```bash npm
+        npm install @c15t/react
+        ```
+        
+        ```bash yarn
+        yarn add @c15t/react
+        ```
+        
+        ```bash pnpm
+        pnpm add @c15t/react
+        ```
+        
+        ```bash bun
+        bun add @c15t/react
+        ```
+        </CodeGroup>
+      </Step>
+      
+      <Step title="Add the provider and banner">
+        Wrap your app with `ConsentManagerProvider` and add the `CookieBanner` component:
+        
+        ```tsx App.tsx
+        'use client';
+        
+        import { ConsentManagerProvider, CookieBanner } from '@c15t/react';
+        
+        export default function App() {
+          return (
+            <ConsentManagerProvider options={{ mode: 'offline' }}>
+              <main>
+                <h1>Welcome to my app</h1>
+                {/* Your app content */}
+              </main>
+              <CookieBanner />
+            </ConsentManagerProvider>
+          );
+        }
+        ```
+        
+        <Note>
+          The `'use client'` directive is required for React Server Components (Next.js 13+).
+        </Note>
+      </Step>
+      
+      <Step title="Test your banner">
+        Start your development server and you'll see the cookie banner appear at the bottom of the page.
+        
+        ```bash
+        npm run dev
+        ```
+        
+        The banner includes three buttons:
+        - **Reject all**: Decline optional cookies
+        - **Customize**: Open detailed preferences
+        - **Accept all**: Grant all consents
+      </Step>
+    </Steps>
+  </Tab>
+  
+  <Tab title="Next.js">
+    <Steps>
+      <Step title="Install c15t">
+        Install the React package (works with Next.js 13, 14, and 15):
+        
+        <CodeGroup>
+        ```bash npm
+        npm install @c15t/react
+        ```
+        
+        ```bash yarn
+        yarn add @c15t/react
+        ```
+        
+        ```bash pnpm
+        pnpm add @c15t/react
+        ```
+        
+        ```bash bun
+        bun add @c15t/react
+        ```
+        </CodeGroup>
+      </Step>
+      
+      <Step title="Update your root layout">
+        Add the provider and banner to your root layout:
+        
+        ```tsx app/layout.tsx
+        import { ConsentManagerProvider, CookieBanner } from '@c15t/react';
+        
+        export default function RootLayout({
+          children,
+        }: {
+          children: React.ReactNode;
+        }) {
+          return (
+            <html lang="en">
+              <body>
+                <ConsentManagerProvider options={{ mode: 'offline' }}>
+                  {children}
+                  <CookieBanner />
+                </ConsentManagerProvider>
+              </body>
+            </html>
+          );
+        }
+        ```
+        
+        <Warning>
+          Make sure `ConsentManagerProvider` is a client component. The component already includes `'use client'` so you don't need to add it.
+        </Warning>
+      </Step>
+      
+      <Step title="Test your banner">
+        Start your Next.js development server:
+        
+        ```bash
+        npm run dev
+        ```
+        
+        Navigate to `http://localhost:3000` and you'll see the cookie banner.
+      </Step>
+    </Steps>
+  </Tab>
+  
+  <Tab title="JavaScript">
+    <Steps>
+      <Step title="Install c15t">
+        Install the core package:
+        
+        <CodeGroup>
+        ```bash npm
+        npm install c15t
+        ```
+        
+        ```bash yarn
+        yarn add c15t
+        ```
+        
+        ```bash pnpm
+        pnpm add c15t
+        ```
+        
+        ```bash bun
+        bun add c15t
+        ```
+        </CodeGroup>
+      </Step>
+      
+      <Step title="Create a consent manager">
+        Initialize the consent manager and store:
+        
+        ```javascript main.js
+        import { configureConsentManager, createConsentManagerStore } from 'c15t';
+        
+        // Configure the consent manager
+        const manager = configureConsentManager({
+          mode: 'offline'
+        });
+        
+        // Create the consent store
+        const store = createConsentManagerStore(manager, {
+          callbacks: {
+            onConsentSet: ({ preferences }) => {
+              console.log('Consent updated:', preferences);
+            }
+          }
+        });
+        
+        // Access the store globally
+        window.consentStore = store;
+        ```
+      </Step>
+      
+      <Step title="Access consent state">
+        Use the store to check consent and react to changes:
+        
+        ```javascript
+        // Get current consent state
+        const state = store.getState();
+        console.log('Analytics consent:', state.consents.measurement);
+        
+        // Check if user has consented
+        if (state.hasConsented()) {
+          console.log('User has made a consent decision');
+        }
+        
+        // Subscribe to changes
+        const unsubscribe = store.subscribe((state) => {
+          if (state.consents.measurement) {
+            // Initialize analytics
+            initializeAnalytics();
+          }
+        });
+        ```
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+## Using the script loader
 
-### Step 2: Deploy your changes
+Load third-party scripts based on user consent:
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
+```typescript
+import { createConsentManagerStore, configureConsentManager } from 'c15t';
+
+const manager = configureConsentManager({ mode: 'offline' });
+
+const store = createConsentManagerStore(manager, {
+  scripts: [
+    {
+      id: 'google-analytics',
+      src: 'https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID',
+      category: 'measurement',
+      onLoad: ({ hasConsent }) => {
+        if (hasConsent) {
+          window.dataLayer = window.dataLayer || [];
+          function gtag() { dataLayer.push(arguments); }
+          gtag('js', new Date());
+          gtag('config', 'GA_MEASUREMENT_ID');
+        }
+      }
+    },
+    {
+      id: 'facebook-pixel',
+      src: 'https://connect.facebook.net/en_US/fbevents.js',
+      category: 'marketing',
+      onLoad: ({ hasConsent }) => {
+        if (hasConsent) {
+          fbq('init', 'YOUR_PIXEL_ID');
+          fbq('track', 'PageView');
+        }
+      }
+    }
+  ]
+});
+```
+
+<Info>
+  Scripts automatically load when consent is granted and unload when consent is revoked.
+</Info>
+
+## Check consent programmatically
+
+Use the consent state in your application logic:
+
+<CodeGroup>
+```typescript React Hook
+import { useConsentManager } from '@c15t/react';
+
+function AnalyticsComponent() {
+  const { consents, has } = useConsentManager();
+  
+  // Simple check
+  if (consents.measurement) {
+    // Track event
+  }
+  
+  // Complex condition
+  if (has({ and: ['measurement', 'marketing'] })) {
+    // Track conversion
+  }
+  
+  return <div>Analytics enabled: {String(consents.measurement)}</div>;
+}
+```
+
+```typescript Vanilla JS
+const store = window.consentStore;
+const state = store.getState();
+
+// Simple check
+if (state.consents.measurement) {
+  // Initialize analytics
+}
+
+// Complex condition using has()
+if (state.has({ and: ['measurement', 'marketing'] })) {
+  // Initialize conversion tracking
+}
+
+// OR condition
+if (state.has({ or: ['measurement', 'marketing'] })) {
+  // At least one consent is granted
+}
+```
+</CodeGroup>
+
+## Consent conditions
+
+The `has()` method supports complex consent logic:
+
+```typescript
+type HasCondition<T> = 
+  | T                                    // Simple: 'measurement'
+  | { and: HasCondition<T>[] }          // AND: { and: ['measurement', 'marketing'] }
+  | { or: HasCondition<T>[] }           // OR: { or: ['measurement', 'marketing'] }
+  | { not: HasCondition<T> };           // NOT: { not: 'marketing' }
+```
+
+<Accordion title="Complex condition examples">
+  ```typescript
+  // Simple check
+  has('measurement')  // true if measurement consent is granted
+  
+  // AND - all must be true
+  has({ and: ['measurement', 'marketing'] })
+  
+  // OR - at least one must be true
+  has({ or: ['measurement', 'marketing'] })
+  
+  // NOT - must be false
+  has({ not: 'marketing' })
+  
+  // Nested conditions
+  has({
+    and: [
+      'necessary',
+      { or: ['measurement', 'marketing'] },
+      { not: 'functionality' }
+    ]
+  })
+  ```
 </Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+## Customize the banner
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+Customize the appearance and behavior:
 
-### Step 3: Go live
+```tsx
+import { CookieBanner } from '@c15t/react';
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+<CookieBanner
+  theme={{
+    root: "bg-white shadow-xl rounded-lg p-6",
+    title: "text-2xl font-bold text-gray-900",
+    description: "text-gray-600 mt-2",
+  }}
+  title="Cookie preferences"
+  description="We use cookies to enhance your browsing experience"
+  acceptButtonText="Accept all cookies"
+  rejectButtonText="Reject optional cookies"
+  customizeButtonText="Cookie settings"
+/>
+```
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
-
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Framework guides" icon="book" href="/frameworks/react/quickstart">
+    Deep dive into React, Next.js, and vanilla JavaScript
+  </Card>
+  <Card title="Script loader" icon="bolt" href="/frameworks/javascript/script-loader">
+    Learn advanced script loading patterns
+  </Card>
+  <Card title="Components" icon="palette" href="/frameworks/react/components">
+    Customize the UI and behavior
+  </Card>
+  <Card title="API reference" icon="code" href="/api/core/create-consent-store">
+    Explore the complete API
+  </Card>
 </CardGroup>
 
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>
+## Modes
+
+c15t supports three modes:
+
+<AccordionGroup>
+  <Accordion title="Offline mode" icon="plug-circle-xmark">
+    No backend required. Consent is stored locally in the browser.
+    
+    ```typescript
+    configureConsentManager({ mode: 'offline' })
+    ```
+    
+    **Use when:**
+    - You don't need server-side consent storage
+    - You want to get started quickly
+    - You're prototyping or testing
+  </Accordion>
+  
+  <Accordion title="c15t mode" icon="cloud">
+    Connect to the c15t backend for geo-location detection, audit logging, and centralized consent management.
+    
+    ```typescript
+    configureConsentManager({
+      mode: 'c15t',
+      backendURL: '/api/c15t'
+    })
+    ```
+    
+    **Use when:**
+    - You need geo-location detection
+    - You want audit logging
+    - You need to manage consent across multiple domains
+  </Accordion>
+  
+  <Accordion title="Custom mode" icon="screwdriver-wrench">
+    Bring your own backend implementation.
+    
+    ```typescript
+    configureConsentManager({
+      mode: 'custom',
+      endpointHandlers: {
+        showBanner: async () => ({ showConsentBanner: true }),
+        setConsent: async (data) => ({ success: true }),
+        identifyUser: async (data) => ({ success: true })
+      }
+    })
+    ```
+    
+    **Use when:**
+    - You have existing consent infrastructure
+    - You need custom backend logic
+    - You're integrating with legacy systems
+  </Accordion>
+</AccordionGroup>

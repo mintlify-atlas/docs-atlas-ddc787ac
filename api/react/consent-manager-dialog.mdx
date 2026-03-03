@@ -1,0 +1,246 @@
+---
+title: ConsentManagerDialog
+description: Full-screen dialog for detailed consent preference management.
+---
+
+The `ConsentManagerDialog` component displays a modal dialog where users can view and manage their detailed consent preferences for different cookie categories. It provides granular control over consent settings.
+
+## Import
+
+```tsx
+import { ConsentManagerDialog } from '@c15t/react';
+```
+
+## Usage
+
+```tsx
+import { ConsentManagerProvider, ConsentManagerDialog } from '@c15t/react';
+
+function App() {
+  return (
+    <ConsentManagerProvider options={{ mode: 'c15t' }}>
+      <ConsentManagerDialog />
+      {/* Your app content */}
+    </ConsentManagerProvider>
+  );
+}
+```
+
+## Props
+
+<ParamField path="open" type="boolean">
+  Control the open state. If omitted, the dialog follows `useConsentManager().isPrivacyDialogOpen`.
+</ParamField>
+
+<ParamField path="theme" type="ConsentManagerDialogTheme">
+  Custom styles to apply to the dialog and its child components.
+</ParamField>
+
+<ParamField path="noStyle" type="boolean">
+  When true, removes all default styling from the component.
+  
+  **Default:** `false`
+</ParamField>
+
+<ParamField path="disableAnimation" type="boolean">
+  When true, disables the entrance/exit animations.
+  
+  **Default:** `false`
+</ParamField>
+
+<ParamField path="scrollLock" type="boolean">
+  When true, locks the page scroll when the dialog is open.
+  
+  **Default:** `true`
+</ParamField>
+
+<ParamField path="trapFocus" type="boolean">
+  When true, traps focus within the dialog for accessibility.
+  
+  **Default:** `true`
+</ParamField>
+
+<ParamField path="legalLinks" type="Array<string> | null">
+  Controls which legal links to display:
+  - `undefined` (default): Shows all available legal links
+  - `null`: Explicitly hides all legal links
+  - Array of keys: Shows only the specified legal links
+  
+  **Note:** You must set the legal links in the ConsentManagerProvider options.
+  
+  **Example:**
+  ```tsx
+  // Show all links
+  <ConsentManagerDialog legalLinks={undefined} />
+  
+  // Show no links
+  <ConsentManagerDialog legalLinks={null} />
+  
+  // Show only privacy policy
+  <ConsentManagerDialog legalLinks={['privacyPolicy']} />
+  ```
+</ParamField>
+
+## Examples
+
+### Basic Usage
+
+```tsx
+import { ConsentManagerProvider, ConsentManagerDialog } from '@c15t/react';
+
+function App() {
+  return (
+    <ConsentManagerProvider options={{ mode: 'c15t' }}>
+      <ConsentManagerDialog />
+    </ConsentManagerProvider>
+  );
+}
+```
+
+### Controlled Open State
+
+```tsx
+import { useState } from 'react';
+import { ConsentManagerDialog } from '@c15t/react';
+
+function App() {
+  const [isOpen, setIsOpen] = useState(false);
+  
+  return (
+    <>
+      <button onClick={() => setIsOpen(true)}>
+        Manage Preferences
+      </button>
+      <ConsentManagerDialog open={isOpen} />
+    </>
+  );
+}
+```
+
+### With Custom Styling
+
+```tsx
+import { ConsentManagerDialog } from '@c15t/react';
+
+function App() {
+  return (
+    <ConsentManagerDialog
+      theme={{
+        dialog: {
+          overlay: {
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          },
+          card: {
+            backgroundColor: '#ffffff',
+            borderRadius: '16px',
+            maxWidth: '800px',
+          },
+        },
+      }}
+    />
+  );
+}
+```
+
+### Without Scroll Lock
+
+```tsx
+import { ConsentManagerDialog } from '@c15t/react';
+
+function App() {
+  return (
+    <ConsentManagerDialog scrollLock={false} />
+  );
+}
+```
+
+### With Legal Links
+
+```tsx
+import { ConsentManagerProvider, ConsentManagerDialog } from '@c15t/react';
+
+function App() {
+  return (
+    <ConsentManagerProvider
+      options={{
+        mode: 'c15t',
+        legalLinks: {
+          privacyPolicy: 'https://example.com/privacy',
+          termsOfService: 'https://example.com/terms',
+        },
+      }}
+    >
+      <ConsentManagerDialog legalLinks={['privacyPolicy']} />
+    </ConsentManagerProvider>
+  );
+}
+```
+
+### Disable Animations
+
+```tsx
+import { ConsentManagerDialog } from '@c15t/react';
+
+function App() {
+  return (
+    <ConsentManagerDialog disableAnimation />
+  );
+}
+```
+
+## Opening the Dialog Programmatically
+
+You can open the dialog programmatically using the `useConsentManager` hook:
+
+```tsx
+import { useConsentManager } from '@c15t/react';
+
+function SettingsButton() {
+  const { openPrivacyDialog } = useConsentManager();
+  
+  return (
+    <button onClick={() => openPrivacyDialog()}>
+      Manage Cookie Preferences
+    </button>
+  );
+}
+```
+
+## Features
+
+The `ConsentManagerDialog` provides:
+
+- Detailed view of all consent categories
+- Toggle switches for each category (except necessary cookies)
+- Category descriptions and purposes
+- Accept all / Reject all functionality
+- Save preferences button
+- Legal links section
+- Accessible keyboard navigation
+- Focus trapping for better accessibility
+
+## Accessibility
+
+The `ConsentManagerDialog` component follows accessibility best practices:
+
+- Modal dialog with proper ARIA attributes
+- Focus trapping within the dialog
+- Keyboard navigation (Tab, Escape)
+- Screen reader friendly labels
+- Semantic HTML structure
+
+## Type Definitions
+
+```tsx
+import type { ConsentManagerDialogProps } from '@c15t/react';
+
+interface ConsentManagerDialogProps {
+  open?: boolean;
+  theme?: ConsentManagerDialogTheme;
+  noStyle?: boolean;
+  disableAnimation?: boolean;
+  scrollLock?: boolean;
+  trapFocus?: boolean;
+  legalLinks?: Array<string> | null;
+}
+```

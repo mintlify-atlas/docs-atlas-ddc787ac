@@ -1,0 +1,267 @@
+---
+title: "Next.js Quickstart"
+description: "Get started with c15t in your Next.js application"
+---
+
+## Overview
+
+c15t provides a developer-first consent management platform for Next.js applications with full support for both App Router and Pages Router.
+
+<Note>
+  **Prerequisites**
+  - Next.js 13.5.4 or later
+  - React 18 or later  
+  - Node.js 18.17.0 or later
+  - A hosted [c15t instance](https://consent.io) or [self-hosted deployment](https://c15t.com/docs/self-host/v2)
+</Note>
+
+## Installation
+
+<Tabs>
+  <Tab title="CLI (Recommended)">
+    The fastest way to set up c15t in your Next.js app:
+
+    ```bash
+    pnpm dlx @c15t/cli generate
+    ```
+
+    The CLI will:
+    - Install necessary packages
+    - Configure your c15t instance
+    - Set up environment variables
+    - Add consent management components to your app
+
+    <Tip>You can also use `npx @c15t/cli generate` or `bunx --bun @c15t/cli generate`</Tip>
+  </Tab>
+
+  <Tab title="Manual">
+    Install the package manually:
+
+    ```bash
+    pnpm add @c15t/nextjs
+    ```
+
+    Continue to the [App Router](/frameworks/nextjs/app-router) or [Pages Router](/frameworks/nextjs/pages-router) guide for setup instructions.
+  </Tab>
+</Tabs>
+
+## Quick Setup
+
+<Tabs>
+  <Tab title="App Router">
+    Add the consent manager to your root layout:
+
+    ```tsx app/layout.tsx
+    import { ConsentManagerProvider, CookieBanner } from '@c15t/nextjs'
+
+    export default function RootLayout({ 
+      children 
+    }: { 
+      children: React.ReactNode 
+    }) {
+      return (
+        <html lang="en">
+          <body>
+            <ConsentManagerProvider
+              options={{
+                mode: 'c15t',
+                backendURL: process.env.NEXT_PUBLIC_C15T_BACKEND_URL,
+              }}
+            >
+              {children}
+              <CookieBanner />
+            </ConsentManagerProvider>
+          </body>
+        </html>
+      )
+    }
+    ```
+
+    <Note>
+      The `ConsentManagerProvider` for App Router automatically handles server-side rendering and fetches initial consent data using Next.js headers.
+    </Note>
+  </Tab>
+
+  <Tab title="Pages Router">
+    Wrap your app in `_app.tsx` and add the HOC in your pages:
+
+    ```tsx pages/_app.tsx
+    import { ConsentManagerProvider, CookieBanner } from '@c15t/nextjs/pages'
+    import type { AppProps } from 'next/app'
+
+    export default function App({ 
+      Component, 
+      pageProps 
+    }: AppProps) {
+      return (
+        <ConsentManagerProvider
+          options={{
+            mode: 'c15t',
+            backendURL: process.env.NEXT_PUBLIC_C15T_BACKEND_URL,
+          }}
+          initialData={pageProps.initialC15TData}
+        >
+          <Component {...pageProps} />
+          <CookieBanner />
+        </ConsentManagerProvider>
+      )
+    }
+    ```
+
+    Add the HOC to fetch initial data:
+
+    ```tsx pages/index.tsx
+    import { withInitialC15TData } from '@c15t/nextjs/pages'
+
+    export default function HomePage() {
+      return <div>Your content</div>
+    }
+
+    export const getServerSideProps = withInitialC15TData(
+      process.env.NEXT_PUBLIC_C15T_BACKEND_URL!
+    )
+    ```
+  </Tab>
+</Tabs>
+
+## Configuration Options
+
+The `ConsentManagerProvider` accepts an `options` prop with the following configuration:
+
+### Mode
+
+<Tabs>
+  <Tab title="c15t (Recommended)">
+    Connect to a c15t backend for full consent management:
+
+    ```tsx
+    <ConsentManagerProvider
+      options={{
+        mode: 'c15t',
+        backendURL: 'https://your-instance.c15t.dev',
+      }}
+    >
+      {children}
+    </ConsentManagerProvider>
+    ```
+  </Tab>
+
+  <Tab title="offline">
+    Run without a backend (consent stored locally):
+
+    ```tsx
+    <ConsentManagerProvider
+      options={{
+        mode: 'offline',
+      }}
+    >
+      {children}
+    </ConsentManagerProvider>
+    ```
+  </Tab>
+
+  <Tab title="custom">
+    Use a custom backend implementation:
+
+    ```tsx
+    <ConsentManagerProvider
+      options={{
+        mode: 'custom',
+        // Your custom configuration
+      }}
+    >
+      {children}
+    </ConsentManagerProvider>
+    ```
+  </Tab>
+</Tabs>
+
+### Additional Options
+
+```tsx
+<ConsentManagerProvider
+  options={{
+    mode: 'c15t',
+    backendURL: process.env.NEXT_PUBLIC_C15T_BACKEND_URL,
+    // Storage configuration
+    store: {
+      // Custom storage options
+    },
+    // Override detected location/language
+    overrides: {
+      country: 'US',
+      region: 'CA',
+      language: 'en-US',
+    },
+    // React-specific options
+    react: {
+      theme: {
+        // Custom theme configuration
+      },
+    },
+  }}
+>
+  {children}
+</ConsentManagerProvider>
+```
+
+## Components
+
+All components from `@c15t/react` are re-exported from `@c15t/nextjs`:
+
+<CardGroup cols={2}>
+  <Card title="CookieBanner" icon="cookie">
+    Display a consent banner to users
+  </Card>
+  <Card title="ConsentManagerDialog" icon="window">
+    Full consent preferences dialog
+  </Card>
+  <Card title="ConsentManagerWidget" icon="sliders">
+    Compact widget for managing consent
+  </Card>
+  <Card title="Frame" icon="frame">
+    Customizable consent UI frame
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="App Router" icon="route" href="/frameworks/nextjs/app-router">
+    Deep dive into App Router patterns
+  </Card>
+  <Card title="Pages Router" icon="file" href="/frameworks/nextjs/pages-router">
+    Learn Pages Router implementation
+  </Card>
+  <Card title="Server Components" icon="server" href="/frameworks/nextjs/server-components">
+    Using c15t with React Server Components
+  </Card>
+</CardGroup>
+
+## Version Support
+
+c15t supports Next.js versions:
+
+<Tabs>
+  <Tab title="Next.js 15">
+    ✅ Fully supported with App Router and Pages Router
+  </Tab>
+  <Tab title="Next.js 14">
+    ✅ Fully supported with App Router and Pages Router
+  </Tab>
+  <Tab title="Next.js 13">
+    ✅ Fully supported (requires 13.5.4 or later)
+  </Tab>
+</Tabs>
+
+## Environment Variables
+
+Add to your `.env.local`:
+
+```bash
+NEXT_PUBLIC_C15T_BACKEND_URL=https://your-instance.c15t.dev
+```
+
+<Warning>
+  The backend URL must be prefixed with `NEXT_PUBLIC_` to be accessible on the client side.
+</Warning>

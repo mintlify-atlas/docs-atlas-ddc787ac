@@ -1,0 +1,662 @@
+---
+title: "Headless Components"
+description: "Build custom consent UI with c15t's headless React components. Full control over design while maintaining GDPR compliance."
+icon: "code"
+---
+
+## Overview
+
+The c15t React package provides a headless API that gives you complete control over the UI while handling all the consent management logic. This is perfect when you need:
+
+- Complete design freedom
+- Custom animations and interactions
+- Integration with your existing design system
+- Non-standard layouts or workflows
+
+The headless export (`@c15t/react/headless`) includes:
+- `ConsentManagerProvider` - Context provider
+- All React hooks (`useConsentManager`, `useTranslations`, etc.)
+- Core utilities from `c15t` package
+- **No** pre-built UI components
+
+## Installation
+
+The headless API is included in the main `@c15t/react` package:
+
+```bash
+pnpm add @c15t/react
+```
+
+## Importing Headless Components
+
+Import from the headless entry point to exclude all UI components:
+
+```tsx
+import { 
+  ConsentManagerProvider, 
+  useConsentManager,
+  useTranslations,
+  useColorScheme,
+  useFocusTrap,
+  configureConsentManager
+} from '@c15t/react/headless';
+```
+
+This import excludes:
+- `CookieBanner`
+- `ConsentManagerDialog`
+- `ConsentManagerWidget`
+- `Frame`
+- All UI components and their dependencies
+
+## Basic Setup
+
+### 1. Set Up the Provider
+
+Just like the standard setup, wrap your app with the `ConsentManagerProvider`:
+
+```tsx App.tsx
+import { ConsentManagerProvider } from '@c15t/react/headless';
+
+function App() {
+  return (
+    <ConsentManagerProvider
+      options={{
+        mode: 'c15t',
+        backendURL: '/api/c15t',
+      }}
+    >
+      <YourApp />
+      {/* Your custom UI components */}
+    </ConsentManagerProvider>
+  );
+}
+```
+
+### 2. Build Custom Components
+
+Use the `useConsentManager` hook to access consent state and build your custom UI:
+
+```tsx CustomCookieBanner.tsx
+import { useConsentManager } from '@c15t/react/headless';
+
+export function CustomCookieBanner() {
+  const { 
+    isBannerOpen, 
+    acceptConsent, 
+    rejectConsent, 
+    closeBanner 
+  } = useConsentManager();
+
+  if (!isBannerOpen) return null;
+
+  return (
+    <div className="fixed bottom-0 left-0 right-0 bg-white p-4 shadow-lg">
+      <h2 className="text-lg font-bold">Cookie Notice</h2>
+      <p className="text-sm text-gray-600 mt-2">
+        We use cookies to improve your experience.
+      </p>
+      <div className="flex gap-2 mt-4">
+        <button
+          onClick={() => {
+            rejectConsent();
+            closeBanner();
+          }}
+          className="px-4 py-2 bg-gray-200 rounded"
+        >
+          Reject
+        </button>
+        <button
+          onClick={() => {
+            acceptConsent();
+            closeBanner();
+          }}
+          className="px-4 py-2 bg-blue-600 text-white rounded"
+        >
+          Accept
+        </button>
+      </div>
+    </div>
+  );
+}
+```
+
+## Available Hooks
+
+### useConsentManager
+
+The primary hook for accessing and managing consent state:
+
+```tsx
+import { useConsentManager } from '@c15t/react/headless';
+
+function MyComponent() {
+  const {
+    // State
+    consents,              // Current consent state
+    isLoading,            // Whether consent is loading
+    isBannerOpen,         // Whether banner should be shown
+    isPrivacyDialogOpen,  // Whether dialog should be shown
+    consentTypes,         // Available consent categories
+    country,              // User's detected country
+    region,               // User's detected region
+    
+    // Methods
+    setConsent,           // Set specific consents
+    acceptConsent,        // Accept all consents
+    rejectConsent,        // Reject all non-required consents
+    hasConsent,           // Check if category has consent
+    openBanner,           // Open the banner
+    closeBanner,          // Close the banner
+    openDialog,           // Open the dialog
+    closeDialog,          // Close the dialog
+  } = useConsentManager();
+
+  return (
+    // Your UI here
+  );
+}
+```
+
+### useTranslations
+
+Access translations for the current language:
+
+```tsx
+import { useTranslations } from '@c15t/react/headless';
+
+function MyComponent() {
+  const translations = useTranslations();
+
+  return (
+    <div>
+      <h2>{translations.cookieBanner.title}</h2>
+      <p>{translations.cookieBanner.description}</p>
+      <button>{translations.common.acceptAll}</button>
+    </div>
+  );
+}
+```
+
+**Translation structure:**
+
+<Accordion title="Available translations">
+  ```typescript
+  interface Translations {
+    cookieBanner: {
+      title: string;
+      description: string;
+    };
+    consentManagerDialog: {
+      title: string;
+      description: string;
+      savePreferences: string;
+    };
+    consentTypes: {
+      necessary: { title: string; description: string };
+      analytics: { title: string; description: string };
+      marketing: { title: string; description: string };
+      // ... other consent types
+    };
+    common: {
+      acceptAll: string;
+      rejectAll: string;
+      customize: string;
+      save: string;
+      close: string;
+    };
+  }
+  ```
+</Accordion>
+
+### useColorScheme
+
+Manage color scheme for your custom components:
+
+```tsx
+import { useColorScheme } from '@c15t/react/headless';
+
+function App() {
+  // Auto-detects system preference
+  useColorScheme('system');
+  
+  // Or force a specific scheme
+  // useColorScheme('light');
+  // useColorScheme('dark');
+
+  return <YourApp />;
+}
+```
+
+This hook adds/removes the `c15t-dark` class on the document element.
+
+### useFocusTrap
+
+Trap focus within a modal or dialog for accessibility:
+
+```tsx
+import { useFocusTrap } from '@c15t/react/headless';
+import { useRef } from 'react';
+
+function CustomModal({ isOpen }: { isOpen: boolean }) {
+  const modalRef = useRef<HTMLDivElement>(null);
+  
+  useFocusTrap(isOpen, modalRef);
+
+  if (!isOpen) return null;
+
+  return (
+    <div ref={modalRef} role="dialog" aria-modal="true">
+      <h2>Modal Title</h2>
+      <button>Action</button>
+      <button>Close</button>
+    </div>
+  );
+}
+```
+
+## Building Custom Components
+
+### Custom Cookie Banner
+
+A complete example with all features:
+
+```tsx CustomCookieBanner.tsx
+import { useConsentManager, useTranslations } from '@c15t/react/headless';
+import { useState } from 'react';
+
+export function CustomCookieBanner() {
+  const { 
+    isBannerOpen, 
+    consentTypes,
+    setConsent,
+    closeBanner 
+  } = useConsentManager();
+  const translations = useTranslations();
+  const [showDetails, setShowDetails] = useState(false);
+
+  if (!isBannerOpen) return null;
+
+  const handleAcceptAll = () => {
+    const allConsents = consentTypes.reduce(
+      (acc, type) => ({ ...acc, [type.name]: true }),
+      {}
+    );
+    setConsent(allConsents);
+    closeBanner();
+  };
+
+  const handleRejectAll = () => {
+    const onlyRequired = consentTypes.reduce(
+      (acc, type) => ({ ...acc, [type.name]: type.required }),
+      {}
+    );
+    setConsent(onlyRequired);
+    closeBanner();
+  };
+
+  return (
+    <div className="fixed inset-x-0 bottom-0 bg-white dark:bg-gray-900 shadow-lg">
+      <div className="max-w-7xl mx-auto p-6">
+        <h2 className="text-2xl font-bold mb-2">
+          {translations.cookieBanner.title}
+        </h2>
+        <p className="text-gray-600 dark:text-gray-300 mb-4">
+          {translations.cookieBanner.description}
+        </p>
+
+        {showDetails && (
+          <div className="mb-4 space-y-2">
+            {consentTypes.map((type) => (
+              <div key={type.name} className="flex items-center">
+                <input
+                  type="checkbox"
+                  id={type.name}
+                  disabled={type.required}
+                  defaultChecked={type.required}
+                />
+                <label htmlFor={type.name} className="ml-2">
+                  {translations.consentTypes[type.name]?.title || type.name}
+                </label>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={handleRejectAll}
+            className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded"
+          >
+            {translations.common.rejectAll}
+          </button>
+          <button
+            onClick={() => setShowDetails(!showDetails)}
+            className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded"
+          >
+            {translations.common.customize}
+          </button>
+          <button
+            onClick={handleAcceptAll}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded"
+          >
+            {translations.common.acceptAll}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+### Custom Consent Dialog
+
+```tsx CustomConsentDialog.tsx
+import { useConsentManager, useTranslations } from '@c15t/react/headless';
+import { useFocusTrap } from '@c15t/react/headless';
+import { useRef, useState } from 'react';
+
+export function CustomConsentDialog() {
+  const { 
+    isPrivacyDialogOpen, 
+    consentTypes,
+    consents,
+    setConsent,
+    closeDialog 
+  } = useConsentManager();
+  const translations = useTranslations();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const [preferences, setPreferences] = useState(consents);
+
+  useFocusTrap(isPrivacyDialogOpen, dialogRef);
+
+  if (!isPrivacyDialogOpen) return null;
+
+  const handleSave = () => {
+    setConsent(preferences);
+    closeDialog();
+  };
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/50" onClick={closeDialog} />
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="dialog-title"
+        className="fixed inset-0 m-auto max-w-2xl max-h-[80vh] bg-white rounded-lg shadow-xl p-6 overflow-auto"
+      >
+        <h2 id="dialog-title" className="text-2xl font-bold mb-4">
+          {translations.consentManagerDialog.title}
+        </h2>
+        
+        <div className="space-y-4 mb-6">
+          {consentTypes.map((type) => (
+            <div key={type.name} className="border rounded-lg p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-semibold">
+                  {translations.consentTypes[type.name]?.title || type.name}
+                </h3>
+                <label className="relative inline-block w-12 h-6">
+                  <input
+                    type="checkbox"
+                    checked={preferences[type.name] || type.required}
+                    disabled={type.required}
+                    onChange={(e) =>
+                      setPreferences({
+                        ...preferences,
+                        [type.name]: e.target.checked,
+                      })
+                    }
+                    className="sr-only peer"
+                  />
+                  <span className="absolute inset-0 bg-gray-300 peer-checked:bg-blue-600 rounded-full transition" />
+                  <span className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition peer-checked:translate-x-6" />
+                </label>
+              </div>
+              <p className="text-sm text-gray-600">
+                {translations.consentTypes[type.name]?.description || ''}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={closeDialog}
+            className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded"
+          >
+            {translations.common.close}
+          </button>
+          <button
+            onClick={handleSave}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded"
+          >
+            {translations.consentManagerDialog.savePreferences}
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+```
+
+### Custom Consent Toggle
+
+A simple toggle component for settings pages:
+
+```tsx ConsentToggle.tsx
+import { useConsentManager, useTranslations } from '@c15t/react/headless';
+import type { AllConsentNames } from 'c15t';
+
+interface ConsentToggleProps {
+  category: AllConsentNames;
+}
+
+export function ConsentToggle({ category }: ConsentToggleProps) {
+  const { hasConsent, setConsent, consentTypes } = useConsentManager();
+  const translations = useTranslations();
+  
+  const consentType = consentTypes.find(t => t.name === category);
+  const isChecked = hasConsent(category);
+  const isDisabled = consentType?.required;
+
+  const handleToggle = () => {
+    setConsent({ [category]: !isChecked });
+  };
+
+  return (
+    <div className="flex items-center justify-between p-4 border rounded">
+      <div>
+        <h3 className="font-medium">
+          {translations.consentTypes[category]?.title || category}
+        </h3>
+        <p className="text-sm text-gray-600">
+          {translations.consentTypes[category]?.description || ''}
+        </p>
+      </div>
+      <button
+        onClick={handleToggle}
+        disabled={isDisabled}
+        className={`relative w-12 h-6 rounded-full transition ${
+          isChecked ? 'bg-blue-600' : 'bg-gray-300'
+        } ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+      >
+        <span
+          className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition ${
+            isChecked ? 'translate-x-6' : ''
+          }`}
+        />
+      </button>
+    </div>
+  );
+}
+```
+
+## Core Utilities
+
+The headless export also includes core utilities from the `c15t` package:
+
+```tsx
+import { 
+  configureConsentManager,
+  detectBrowserLanguage,
+  mergeTranslationConfigs,
+  prepareTranslationConfig,
+  defaultTranslationConfig
+} from '@c15t/react/headless';
+
+// Configure consent manager manually
+const manager = configureConsentManager({
+  mode: 'offline',
+  store: {
+    consentTypes: [
+      { name: 'necessary', required: true },
+      { name: 'analytics', required: false },
+    ],
+  },
+});
+
+// Detect browser language
+const language = detectBrowserLanguage();
+
+// Merge translation configs
+const customTranslations = mergeTranslationConfigs(
+  defaultTranslationConfig,
+  {
+    translations: {
+      en: {
+        cookieBanner: {
+          title: 'Custom Title',
+        },
+      },
+    },
+  }
+);
+```
+
+## TypeScript Support
+
+The headless API is fully typed. Import types for better type safety:
+
+```tsx
+import type { 
+  ConsentManagerProviderProps,
+  ConsentManagerOptions,
+  ConsentManagerInterface,
+  AllConsentNames,
+  ConsentState,
+  TranslationConfig,
+  Translations
+} from '@c15t/react/headless';
+
+const options: ConsentManagerOptions = {
+  mode: 'c15t',
+  backendURL: '/api/c15t',
+  consentCategories: ['necessary', 'analytics', 'marketing'],
+};
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Always use the ConsentManagerProvider">
+    Even in headless mode, you must wrap your app with `ConsentManagerProvider`. It manages the consent state and provides context to all hooks.
+
+    ```tsx
+    // ✅ Correct
+    <ConsentManagerProvider options={options}>
+      <CustomUI />
+    </ConsentManagerProvider>
+
+    // ❌ Wrong - hooks will throw errors
+    <CustomUI />
+    ```
+  </Accordion>
+
+  <Accordion title="Handle loading states">
+    Always check `isLoading` before showing UI:
+
+    ```tsx
+    const { isLoading, isBannerOpen } = useConsentManager();
+
+    if (isLoading) return null;
+    if (!isBannerOpen) return null;
+
+    return <YourBanner />;
+    ```
+  </Accordion>
+
+  <Accordion title="Respect required consents">
+    Never allow users to disable required consents:
+
+    ```tsx
+    const { consentTypes } = useConsentManager();
+
+    consentTypes.map(type => (
+      <input
+        type="checkbox"
+        disabled={type.required}
+        defaultChecked={type.required}
+      />
+    ));
+    ```
+  </Accordion>
+
+  <Accordion title="Use translations for internationalization">
+    Always use the `useTranslations` hook instead of hardcoding text:
+
+    ```tsx
+    // ✅ Correct
+    const translations = useTranslations();
+    <button>{translations.common.acceptAll}</button>
+
+    // ❌ Wrong - not internationalized
+    <button>Accept All</button>
+    ```
+  </Accordion>
+
+  <Accordion title="Implement focus management">
+    Use `useFocusTrap` for modal dialogs to improve accessibility:
+
+    ```tsx
+    const dialogRef = useRef<HTMLDivElement>(null);
+    useFocusTrap(isOpen, dialogRef);
+
+    return (
+      <div ref={dialogRef} role="dialog" aria-modal="true">
+        {/* Dialog content */}
+      </div>
+    );
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Examples
+
+<CardGroup cols={2}>
+  <Card title="Tailwind CSS" icon="palette" href="https://github.com/c15t/examples/tree/main/react-headless-tailwind">
+    Complete example using Tailwind CSS for styling.
+  </Card>
+  <Card title="Chakra UI" icon="chakra" href="https://github.com/c15t/examples/tree/main/react-headless-chakra">
+    Integration with Chakra UI component library.
+  </Card>
+  <Card title="Material UI" icon="material-ui" href="https://github.com/c15t/examples/tree/main/react-headless-mui">
+    Using Material UI components with c15t headless.
+  </Card>
+  <Card title="Framer Motion" icon="motion" href="https://github.com/c15t/examples/tree/main/react-headless-framer">
+    Custom animations with Framer Motion.
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Hooks Reference" icon="hook" href="/frameworks/react/hooks">
+    Complete API reference for all available hooks.
+  </Card>
+  <Card title="Core Package" icon="box" href="/api/core/create-consent-store">
+    Learn about the underlying c15t core package.
+  </Card>
+</CardGroup>

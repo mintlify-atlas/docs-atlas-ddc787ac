@@ -1,0 +1,329 @@
+---
+title: "Meta Pixel"
+description: "Integrate Meta Pixel (Facebook/Instagram) with consent API support"
+icon: "meta"
+---
+
+## Overview
+
+Meta Pixel integration for Facebook and Instagram conversion tracking with built-in consent management using Meta's consent API. This integration is persistent and uses Meta's grant/revoke consent API.
+
+<Info>
+  Meta Pixel is categorized as **marketing** by default.
+</Info>
+
+## Installation
+
+<CodeGroup>
+```bash npm
+npm install @c15t/scripts c15t
+```
+
+```bash yarn
+yarn add @c15t/scripts c15t
+```
+
+```bash pnpm
+pnpm add @c15t/scripts c15t
+```
+
+```bash bun
+bun add @c15t/scripts c15t
+```
+</CodeGroup>
+
+## Basic usage
+
+<CodeGroup>
+```typescript React
+import { loadScripts } from 'c15t';
+import { metaPixel } from '@c15t/scripts/meta-pixel';
+import { useEffect } from 'react';
+
+export function App() {
+  useEffect(() => {
+    const fbPixelScript = metaPixel({
+      pixelId: '123456789012345',
+    });
+
+    loadScripts([fbPixelScript], {
+      consents: {
+        necessary: true,
+        functionality: false,
+        measurement: false,
+        marketing: true, // Meta Pixel requires marketing consent
+        experience: false,
+      },
+    });
+  }, []);
+
+  return <div>Your app</div>;
+}
+```
+
+```typescript Next.js
+import { loadScripts } from 'c15t';
+import { metaPixel } from '@c15t/scripts/meta-pixel';
+import { useEffect } from 'react';
+
+export default function RootLayout({ children }) {
+  useEffect(() => {
+    const fbPixelScript = metaPixel({
+      pixelId: '123456789012345',
+    });
+
+    loadScripts([fbPixelScript], {
+      consents: {
+        necessary: true,
+        functionality: false,
+        measurement: false,
+        marketing: true,
+        experience: false,
+      },
+    });
+  }, []);
+
+  return <html><body>{children}</body></html>;
+}
+```
+
+```typescript Vanilla JS
+import { loadScripts } from 'c15t';
+import { metaPixel } from '@c15t/scripts/meta-pixel';
+
+const fbPixelScript = metaPixel({
+  pixelId: '123456789012345',
+});
+
+loadScripts([fbPixelScript], {
+  consents: {
+    necessary: true,
+    functionality: false,
+    measurement: false,
+    marketing: true,
+    experience: false,
+  },
+});
+```
+</CodeGroup>
+
+## Configuration
+
+### Options
+
+<ParamField path="pixelId" type="string" required>
+  Your Meta Pixel ID.
+  
+  **Example**: `123456789012345`
+</ParamField>
+
+<ParamField path="script" type="Partial<Script>">
+  Override or extend default script values.
+  
+  **Defaults**:
+  - `id`: `'meta-pixel'`
+  - `category`: `'marketing'`
+  - `src`: `https://connect.facebook.net/en_US/fbevents.js`
+  - `persistAfterConsentRevoked`: `true`
+</ParamField>
+
+## Tracking events
+
+Use the provided helper function or the global `fbq` function:
+
+```typescript
+import { metaPixelEvent } from '@c15t/scripts/meta-pixel';
+
+// Using the helper (type-safe)
+metaPixelEvent('Purchase', {
+  value: 10.0,
+  currency: 'USD',
+  contents: [{ id: 'product-123', quantity: 1 }],
+  content_type: 'product',
+});
+
+// Using global fbq directly
+window.fbq('track', 'AddToCart', {
+  value: 10.0,
+  currency: 'USD',
+});
+```
+
+### Standard events
+
+The integration includes full TypeScript types for all Meta Pixel standard events:
+
+<CodeGroup>
+```typescript Purchase
+metaPixelEvent('Purchase', {
+  value: 99.99,
+  currency: 'USD',
+  content_ids: ['product-1', 'product-2'],
+  content_type: 'product',
+  contents: [
+    { id: 'product-1', quantity: 2 },
+    { id: 'product-2', quantity: 1 },
+  ],
+  num_items: 3,
+});
+```
+
+```typescript AddToCart
+metaPixelEvent('AddToCart', {
+  value: 29.99,
+  currency: 'USD',
+  content_ids: ['product-123'],
+  content_type: 'product',
+  contents: [{ id: 'product-123', quantity: 1 }],
+});
+```
+
+```typescript Lead
+metaPixelEvent('Lead', {
+  value: 0,
+  currency: 'USD',
+});
+```
+
+```typescript CompleteRegistration
+metaPixelEvent('CompleteRegistration', {
+  value: 0,
+  currency: 'USD',
+  status: true,
+});
+```
+</CodeGroup>
+
+### Available standard events
+
+- `AddPaymentInfo`
+- `AddToCart`
+- `AddToWishlist`
+- `CompleteRegistration`
+- `Contact`
+- `CustomizeProduct`
+- `Donate`
+- `FindLocation`
+- `InitiateCheckout`
+- `Lead`
+- `Purchase` (value and currency required)
+- `Schedule`
+- `Search`
+- `StartTrial`
+- `SubmitApplication`
+- `Subscribe`
+- `ViewContent`
+
+## Advanced usage
+
+### Conversion API deduplication
+
+Use event IDs to deduplicate events sent via both Pixel and Conversion API:
+
+```typescript
+import { metaPixelEvent } from '@c15t/scripts/meta-pixel';
+
+const eventId = 'event-' + Date.now();
+
+metaPixelEvent('Purchase', 
+  {
+    value: 99.99,
+    currency: 'USD',
+  },
+  eventId // Pass eventId for deduplication
+);
+
+// Send same eventId to Conversion API server-side
+```
+
+### Multiple pixels
+
+Load multiple Meta Pixels:
+
+```typescript
+import { metaPixel } from '@c15t/scripts/meta-pixel';
+
+const pixel1 = metaPixel({
+  pixelId: '123456789012345',
+  script: { id: 'meta-pixel-1' },
+});
+
+const pixel2 = metaPixel({
+  pixelId: '987654321098765',
+  script: { id: 'meta-pixel-2' },
+});
+
+loadScripts([pixel1, pixel2], { consents });
+```
+
+### Custom callbacks
+
+```typescript
+const fbPixelScript = metaPixel({
+  pixelId: '123456789012345',
+  script: {
+    onLoad: () => {
+      console.log('Meta Pixel loaded');
+      // Track page view
+      window.fbq('track', 'PageView');
+    },
+    onDelete: () => {
+      console.log('Meta Pixel consent revoked');
+    },
+  },
+});
+```
+
+## How it works
+
+1. **On load**: Injects Meta Pixel loader script inline with `fbq('consent', 'grant')` and tracks initial PageView
+2. **Persistent**: Script remains loaded even when consent is revoked
+3. **On delete**: Calls `fbq('consent', 'revoke')` to stop tracking without removing the script
+
+<Info>
+  This integration uses `persistAfterConsentRevoked: true` because Meta Pixel has a built-in consent API. The script stays loaded but stops tracking when consent is revoked.
+</Info>
+
+## TypeScript
+
+Full TypeScript support with event parameter validation:
+
+```typescript
+import type { Script } from 'c15t';
+import { 
+  metaPixel, 
+  metaPixelEvent,
+  type MetaPixelOptions,
+  type StandardEventParams,
+} from '@c15t/scripts/meta-pixel';
+
+// Type-safe options
+const options: MetaPixelOptions = {
+  pixelId: '123456789012345',
+};
+
+const script: Script = metaPixel(options);
+
+// Type-safe events - TypeScript enforces correct parameters
+metaPixelEvent('Purchase', {
+  value: 99.99, // Required for Purchase
+  currency: 'USD', // Required for Purchase
+  content_type: 'product',
+});
+```
+
+## Resources
+
+<CardGroup cols={2}>
+  <Card title="Meta Pixel Events" icon="meta" href="https://developers.facebook.com/docs/meta-pixel/reference">
+    Complete Meta Pixel event reference
+  </Card>
+  
+  <Card title="Conversion API" icon="server" href="https://developers.facebook.com/docs/marketing-api/conversions-api">
+    Meta Conversions API for server-side tracking
+  </Card>
+  
+  <Card title="Source Code" icon="github" href="https://github.com/c15t/c15t/blob/main/packages/scripts/src/meta-pixel.ts">
+    View the integration source code
+  </Card>
+</CardGroup>

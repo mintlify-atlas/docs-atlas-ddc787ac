@@ -1,0 +1,706 @@
+---
+title: Deployment
+description: Deploy your c15t backend to production environments
+---
+
+# Deployment Guide
+
+Deploy your c15t backend to production with these battle-tested patterns.
+
+## Pre-Deployment Checklist
+
+Before deploying to production:
+
+- [ ] Database is provisioned and accessible
+- [ ] Migrations have been run successfully
+- [ ] Environment variables are configured
+- [ ] CORS origins are properly set
+- [ ] Logging is configured
+- [ ] Health check endpoints are working
+- [ ] SSL/TLS certificates are valid
+- [ ] Backup strategy is in place
+
+## Environment Variables
+
+Create a `.env.production` file:
+
+```bash .env.production
+# Database
+DATABASE_URL=postgresql://user:password@db.example.com:5432/consent_db
+DB_POOL_SIZE=20
+
+# API Configuration
+BASE_PATH=/api/consent
+TRUSTED_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
+
+# Logging
+LOG_LEVEL=info
+LOG_FORMAT=json
+
+# OpenTelemetry (optional)
+OTEL_EXPORTER_OTLP_ENDPOINT=https://otel.example.com
+OTEL_SERVICE_NAME=c15t-backend
+
+# Application
+NODE_ENV=production
+PORT=3001
+```
+
+## Deployment Platforms
+
+### Vercel (Next.js)
+
+Perfect for Next.js applications.
+
+#### 1. Add API Route
+
+```typescript app/api/consent/[...c15t]/route.ts
+import { c15tInstance } from '@c15t/backend/v2';
+import { kyselyAdapter } from '@c15t/backend/v2/db/adapters/kysely';
+import { Kysely, PostgresDialect } from 'kysely';
+import { Pool } from 'pg';
+
+const db = new Kysely({
+  dialect: new PostgresDialect({
+    pool: new Pool({
+      connectionString: process.env.DATABASE_URL,
+      max: 1, // Vercel serverless limitation
+    }),
+  }),
+});
+
+const c15t = c15tInstance({
+  adapter: kyselyAdapter(db),
+  trustedOrigins: process.env.TRUSTED_ORIGINS?.split(',') || [],
+  basePath: '/api/consent',
+});
+
+export const GET = c15t.GET;
+export const POST = c15t.POST;
+export const PUT = c15t.PUT;
+export const PATCH = c15t.PATCH;
+export const DELETE = c15t.DELETE;
+export const OPTIONS = c15t.OPTIONS;
+```
+
+#### 2. Configure Environment Variables
+
+In your Vercel project settings, add:
+- `DATABASE_URL`
+- `TRUSTED_ORIGINS`
+- `LOG_LEVEL`
+
+#### 3. Deploy
+
+```bash
+vercel --prod
+```
+
+### Railway
+
+Simple deployment with built-in PostgreSQL.
+
+#### 1. Install Railway CLI
+
+```bash
+npm install -g @railway/cli
+railway login
+```
+
+#### 2. Initialize Project
+
+```bash
+railway init
+```
+
+#### 3. Add PostgreSQL
+
+```bash
+railway add postgresql
+```
+
+#### 4. Deploy
+
+```bash
+railway up
+```
+
+#### Railway Configuration
+
+Create `railway.json`:
+
+```json railway.json
+{
+  "build": {
+    "builder": "NIXPACKS"
+  },
+  "deploy": {
+    "startCommand": "bun run start",
+    "healthcheckPath": "/api/consent/meta/status",
+    "healthcheckTimeout": 100,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10
+  }
+}
+```
+
+### Fly.io
+
+Deploy globally with edge locations.
+
+#### 1. Install Fly CLI
+
+```bash
+curl -L https://fly.io/install.sh | sh
+fly auth login
+```
+
+#### 2. Initialize App
+
+```bash
+fly launch
+```
+
+#### 3. Create Fly Configuration
+
+```toml fly.toml
+app = "c15t-backend"
+primary_region = "sjc"
+
+[build]
+  [build.args]
+    NODE_VERSION = "20"
+
+[env]
+  PORT = "8080"
+  NODE_ENV = "production"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+[[services]]
+  http_checks = []
+  internal_port = 8080
+  processes = ["app"]
+  protocol = "tcp"
+  script_checks = []
+
+  [services.concurrency]
+    hard_limit = 25
+    soft_limit = 20
+    type = "connections"
+
+  [[services.ports]]
+    force_https = true
+    handlers = ["http"]
+    port = 80
+
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = 443
+
+  [[services.tcp_checks]]
+    grace_period = "1s"
+    interval = "15s"
+    restart_limit = 0
+    timeout = "2s"
+
+  [[services.http_checks]]
+    interval = 10000
+    grace_period = "5s"
+    method = "get"
+    path = "/api/consent/meta/status"
+    protocol = "http"
+    timeout = 2000
+    tls_skip_verify = false
+```
+
+#### 4. Add PostgreSQL
+
+```bash
+fly postgres create
+fly postgres attach --app c15t-backend
+```
+
+#### 5. Deploy
+
+```bash
+fly deploy
+```
+
+### Docker
+
+Containerize for any platform.
+
+#### Dockerfile
+
+```dockerfile Dockerfile
+FROM oven/bun:1 as base
+WORKDIR /app
+
+# Install dependencies
+COPY package.json bun.lockb ./
+RUN bun install --frozen-lockfile --production
+
+# Copy source
+COPY . .
+
+# Build
+RUN bun run build
+
+# Production image
+FROM oven/bun:1-slim
+WORKDIR /app
+
+COPY --from=base /app/node_modules ./node_modules
+COPY --from=base /app/dist ./dist
+COPY --from=base /app/package.json ./
+
+EXPOSE 3001
+
+ENV NODE_ENV=production
+
+CMD ["bun", "run", "start"]
+```
+
+#### Docker Compose
+
+```yaml docker-compose.yml
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    ports:
+      - "3001:3001"
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@db:5432/consent_db
+      - TRUSTED_ORIGINS=https://yourdomain.com
+      - LOG_LEVEL=info
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_DB=consent_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+```
+
+#### Build and Run
+
+```bash
+docker-compose up -d
+```
+
+### AWS ECS (Fargate)
+
+Serverless containers on AWS.
+
+#### 1. Build and Push to ECR
+
+```bash
+aws ecr create-repository --repository-name c15t-backend
+
+# Get login command
+aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <account-id>.dkr.ecr.us-east-1.amazonaws.com
+
+# Build and push
+docker build -t c15t-backend .
+docker tag c15t-backend:latest <account-id>.dkr.ecr.us-east-1.amazonaws.com/c15t-backend:latest
+docker push <account-id>.dkr.ecr.us-east-1.amazonaws.com/c15t-backend:latest
+```
+
+#### 2. Create Task Definition
+
+```json task-definition.json
+{
+  "family": "c15t-backend",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "containerDefinitions": [
+    {
+      "name": "c15t-backend",
+      "image": "<account-id>.dkr.ecr.us-east-1.amazonaws.com/c15t-backend:latest",
+      "portMappings": [
+        {
+          "containerPort": 3001,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "DATABASE_URL",
+          "value": "postgresql://..."
+        },
+        {
+          "name": "TRUSTED_ORIGINS",
+          "value": "https://yourdomain.com"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/c15t-backend",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}
+```
+
+#### 3. Create Service
+
+```bash
+aws ecs create-service \
+  --cluster my-cluster \
+  --service-name c15t-backend \
+  --task-definition c15t-backend \
+  --desired-count 2 \
+  --launch-type FARGATE \
+  --network-configuration "awsvpcConfiguration={subnets=[subnet-xxx],securityGroups=[sg-xxx],assignPublicIp=ENABLED}"
+```
+
+### Google Cloud Run
+
+Serverless containers on GCP.
+
+#### 1. Build and Deploy
+
+```bash
+# Build with Cloud Build
+gcloud builds submit --tag gcr.io/PROJECT_ID/c15t-backend
+
+# Deploy to Cloud Run
+gcloud run deploy c15t-backend \
+  --image gcr.io/PROJECT_ID/c15t-backend \
+  --platform managed \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --set-env-vars DATABASE_URL=postgresql://...,TRUSTED_ORIGINS=https://yourdomain.com
+```
+
+### DigitalOcean App Platform
+
+Simple PaaS deployment.
+
+#### 1. Create App Spec
+
+```yaml .do/app.yaml
+name: c15t-backend
+services:
+  - name: api
+    github:
+      repo: your-username/your-repo
+      branch: main
+      deploy_on_push: true
+    build_command: bun install && bun run build
+    run_command: bun run start
+    environment_slug: node-js
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    http_port: 3001
+    routes:
+      - path: /api/consent
+    envs:
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        type: SECRET
+      - key: TRUSTED_ORIGINS
+        value: https://yourdomain.com
+        scope: RUN_TIME
+      - key: NODE_ENV
+        value: production
+        scope: RUN_TIME
+    health_check:
+      http_path: /api/consent/meta/status
+
+databases:
+  - name: consent-db
+    engine: PG
+    version: "15"
+```
+
+#### 2. Deploy
+
+```bash
+doctl apps create --spec .do/app.yaml
+```
+
+## Database Migrations
+
+### Running Migrations in Production
+
+Create a migration script:
+
+```typescript scripts/migrate.ts
+import { createMigrator } from '@c15t/backend/v2/db/migrator';
+import config from '../c15t.config';
+
+const migrator = createMigrator(config.adapter);
+
+try {
+  console.log('Running migrations...');
+  await migrator.up();
+  console.log('Migrations completed successfully');
+  process.exit(0);
+} catch (error) {
+  console.error('Migration failed:', error);
+  process.exit(1);
+}
+```
+
+### CI/CD Migration Strategy
+
+```yaml .github/workflows/deploy.yml
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+      
+      - name: Install dependencies
+        run: bun install
+      
+      - name: Run migrations
+        run: bun run migrate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      
+      - name: Build
+        run: bun run build
+      
+      - name: Deploy
+        run: bun run deploy
+```
+
+## Monitoring
+
+### Health Checks
+
+The status endpoint provides health information:
+
+```bash
+curl https://api.yourdomain.com/api/consent/meta/status
+```
+
+Response:
+```json
+{
+  "status": "ok",
+  "version": "1.8.0"
+}
+```
+
+### Logging
+
+Configure structured logging:
+
+```typescript
+const c15t = c15tInstance({
+  logger: {
+    level: 'info',
+    transport: {
+      target: 'pino/file',
+      options: {
+        destination: '/var/log/c15t/app.log',
+      },
+    },
+  },
+});
+```
+
+### OpenTelemetry
+
+Enable telemetry for observability:
+
+```typescript
+import { trace } from '@opentelemetry/api';
+
+const c15t = c15tInstance({
+  advanced: {
+    telemetry: {
+      disabled: false,
+      tracer: trace.getTracer('c15t-backend'),
+      defaultAttributes: {
+        environment: 'production',
+        service: 'consent-api',
+      },
+    },
+  },
+});
+```
+
+## Security
+
+### HTTPS/TLS
+
+Always use HTTPS in production. Most platforms handle this automatically.
+
+### Environment Secrets
+
+Never commit secrets to version control. Use:
+- Environment variables
+- Secret management services (AWS Secrets Manager, GCP Secret Manager)
+- Platform secret stores (Vercel, Railway, etc.)
+
+### Rate Limiting
+
+Implement rate limiting to prevent abuse:
+
+```typescript
+import rateLimit from 'express-rate-limit';
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+});
+
+app.use('/api/consent', limiter);
+```
+
+## Backup Strategy
+
+### Database Backups
+
+#### PostgreSQL
+
+```bash
+# Daily backup script
+pg_dump -h localhost -U postgres -d consent_db > backup_$(date +%Y%m%d).sql
+
+# Upload to S3
+aws s3 cp backup_$(date +%Y%m%d).sql s3://your-backup-bucket/
+```
+
+#### Automated Backups
+
+Use your platform's backup features:
+- Railway: Automatic daily backups
+- AWS RDS: Automated backups with point-in-time recovery
+- DigitalOcean: Managed database backups
+
+## Performance Optimization
+
+### Connection Pooling
+
+```typescript
+const pool = new Pool({
+  max: 20, // Maximum connections
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+});
+```
+
+### Caching
+
+Implement Redis caching for frequently accessed data:
+
+```typescript
+import Redis from 'ioredis';
+
+const redis = new Redis({
+  host: 'redis.example.com',
+  port: 6379,
+});
+
+// Cache consent policies
+const policy = await redis.get(`policy:${policyId}`);
+```
+
+### CDN
+
+Use a CDN for static assets and API responses:
+- Cloudflare
+- AWS CloudFront
+- Fastly
+
+## Troubleshooting
+
+### Common Issues
+
+#### Database Connection Errors
+
+```typescript
+// Add connection retry logic
+const pool = new Pool({
+  host: 'localhost',
+  port: 5432,
+  // ...
+  max: 10,
+  connectionTimeoutMillis: 5000,
+});
+
+pool.on('error', (err) => {
+  console.error('Unexpected database error:', err);
+});
+```
+
+#### Memory Leaks
+
+Monitor memory usage and implement proper cleanup:
+
+```typescript
+process.on('SIGTERM', async () => {
+  console.log('SIGTERM received, closing database connections...');
+  await pool.end();
+  process.exit(0);
+});
+```
+
+## Scaling
+
+### Horizontal Scaling
+
+Deploy multiple instances behind a load balancer:
+
+```bash
+# Scale on Railway
+railway scale --replicas 3
+
+# Scale on Fly.io
+fly scale count 3
+```
+
+### Database Scaling
+
+- Use read replicas for read-heavy workloads
+- Implement connection pooling
+- Consider managed database services (AWS RDS, DigitalOcean Managed Databases)
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Configuration" icon="gear" href="/self-host/v2/configuration">
+    Configure your deployment
+  </Card>
+  <Card title="Database Adapters" icon="database" href="/self-host/v2/database-adapters">
+    Learn about database options
+  </Card>
+</CardGroup>

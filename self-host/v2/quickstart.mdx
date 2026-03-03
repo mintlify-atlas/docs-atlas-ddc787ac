@@ -1,0 +1,285 @@
+---
+title: Quickstart
+description: Get your c15t backend up and running in minutes
+---
+
+# Quickstart Guide
+
+Get started with self-hosting c15t in just a few minutes.
+
+## Prerequisites
+
+Before you begin, ensure you have:
+
+- **Node.js** 18.17.0 or later (or Bun)
+- A **database** (PostgreSQL, MySQL, SQLite, or MongoDB)
+- Basic knowledge of TypeScript/JavaScript
+
+## Installation
+
+Install the c15t backend package:
+
+<CodeGroup>
+```bash npm
+npm install @c15t/backend
+```
+
+```bash yarn
+yarn add @c15t/backend
+```
+
+```bash pnpm
+pnpm add @c15t/backend
+```
+
+```bash bun
+bun add @c15t/backend
+```
+</CodeGroup>
+
+## Basic Setup
+
+### 1. Create Your Configuration
+
+Create a file `c15t.config.ts`:
+
+```typescript c15t.config.ts
+import { defineConfig } from '@c15t/backend/v2/define-config';
+import { kyselyAdapter } from '@c15t/backend/v2/db/adapters/kysely';
+import { Kysely, PostgresDialect } from 'kysely';
+import { Pool } from 'pg';
+
+// Create your database connection
+const db = new Kysely({
+  dialect: new PostgresDialect({
+    pool: new Pool({
+      host: 'localhost',
+      port: 5432,
+      database: 'consent_db',
+      user: 'postgres',
+      password: 'password',
+    }),
+  }),
+});
+
+export default defineConfig({
+  adapter: kyselyAdapter(db),
+});
+```
+
+### 2. Initialize the Backend
+
+Create your c15t instance:
+
+```typescript index.ts
+import { c15tInstance } from '@c15t/backend/v2';
+import config from './c15t.config';
+
+const c15t = c15tInstance({
+  ...config,
+  trustedOrigins: ['http://localhost:3000', 'https://yourdomain.com'],
+  basePath: '/api/consent',
+});
+
+export default c15t;
+```
+
+### 3. Set Up Your Server
+
+Choose your preferred runtime:
+
+<Tabs>
+  <Tab title="Bun">
+    ```typescript server.ts
+    import c15t from './index';
+
+    Bun.serve({
+      port: 3001,
+      routes: {
+        '/api/consent/*': c15t.handler,
+      },
+    });
+
+    console.log('c15t backend running on http://localhost:3001');
+    ```
+
+    Run with:
+    ```bash
+    bun server.ts
+    ```
+  </Tab>
+
+  <Tab title="Next.js App Router">
+    ```typescript app/api/consent/[...c15t]/route.ts
+    import c15t from '@/lib/c15t';
+
+    // Export all HTTP method handlers
+    export const GET = c15t.GET;
+    export const POST = c15t.POST;
+    export const PUT = c15t.PUT;
+    export const PATCH = c15t.PATCH;
+    export const DELETE = c15t.DELETE;
+    export const OPTIONS = c15t.OPTIONS;
+    ```
+  </Tab>
+
+  <Tab title="Express">
+    ```typescript server.ts
+    import express from 'express';
+    import c15t from './index';
+
+    const app = express();
+
+    app.all('/api/consent/*', async (req, res) => {
+      const request = new Request(
+        `http://localhost:3001${req.url}`,
+        {
+          method: req.method,
+          headers: req.headers as HeadersInit,
+          body: req.method !== 'GET' && req.method !== 'HEAD'
+            ? JSON.stringify(req.body)
+            : undefined,
+        }
+      );
+
+      const response = await c15t.handler(request);
+      
+      res.status(response.status);
+      response.headers.forEach((value, key) => {
+        res.setHeader(key, value);
+      });
+      res.send(await response.text());
+    });
+
+    app.listen(3001, () => {
+      console.log('c15t backend running on http://localhost:3001');
+    });
+    ```
+  </Tab>
+
+  <Tab title="Node.js HTTP">
+    ```typescript server.ts
+    import { createServer } from 'node:http';
+    import c15t from './index';
+
+    const server = createServer(async (req, res) => {
+      const url = `http://localhost:3001${req.url}`;
+      const request = new Request(url, {
+        method: req.method,
+        headers: req.headers as HeadersInit,
+      });
+
+      const response = await c15t.handler(request);
+      
+      res.writeHead(response.status, Object.fromEntries(response.headers));
+      res.end(await response.text());
+    });
+
+    server.listen(3001, () => {
+      console.log('c15t backend running on http://localhost:3001');
+    });
+    ```
+  </Tab>
+</Tabs>
+
+## Database Setup
+
+Run migrations to create the required tables:
+
+```typescript migrate.ts
+import { createMigrator } from '@c15t/backend/v2/db/migrator';
+import config from './c15t.config';
+
+const migrator = createMigrator(config.adapter);
+
+// Run migrations
+await migrator.up();
+
+console.log('Database migrations completed');
+```
+
+Run the migration:
+
+```bash
+bun migrate.ts
+```
+
+## Test Your Setup
+
+Visit the API documentation at:
+
+```
+http://localhost:3001/api/consent/docs
+```
+
+You should see the interactive API documentation powered by Scalar.
+
+## Test the Status Endpoint
+
+Make a request to verify everything is working:
+
+```bash
+curl http://localhost:3001/api/consent/meta/status
+```
+
+Expected response:
+```json
+{
+  "status": "ok",
+  "version": "1.8.0"
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Configuration" icon="gear" href="/self-host/v2/configuration">
+    Learn about all configuration options
+  </Card>
+  <Card title="Database Adapters" icon="database" href="/self-host/v2/database-adapters">
+    Configure different database adapters
+  </Card>
+  <Card title="Deployment" icon="cloud" href="/self-host/v2/deployment">
+    Deploy to production
+  </Card>
+  <Card title="Frontend Integration" icon="browser" href="/quickstart">
+    Connect your frontend
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+### Database Connection Errors
+
+If you see database connection errors:
+
+1. Verify your database is running
+2. Check connection credentials
+3. Ensure the database exists
+4. Check firewall/network settings
+
+### CORS Errors
+
+If you see CORS errors in the browser:
+
+1. Add your frontend origin to `trustedOrigins`
+2. Include both HTTP and HTTPS versions if needed
+3. Check that the `basePath` matches your API route
+
+### Port Already in Use
+
+If the port is already taken:
+
+```bash
+# Find the process using the port
+lsof -i :3001
+
+# Kill the process
+kill -9 <PID>
+```
+
+## Need Help?
+
+- Join our [Discord community](https://c15t.link/discord)
+- Check [GitHub Issues](https://github.com/c15t/c15t/issues)
+- Email [support@consent.io](mailto:support@consent.io)

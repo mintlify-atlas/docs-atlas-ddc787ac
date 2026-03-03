@@ -1,0 +1,349 @@
+---
+title: Init Command
+description: Initialize c15t in your project
+icon: play
+---
+
+<Note>
+The `init` functionality is part of the `generate` command. Use `c15t generate` to initialize c15t in your project.
+</Note>
+
+## Overview
+
+The initialization process is handled by the `generate` command, which:
+- Detects your project setup
+- Guides you through configuration
+- Generates necessary files
+- Installs dependencies
+
+## Quick Start
+
+```bash
+c15t generate
+```
+
+## What Gets Initialized
+
+### 1. Project Detection
+
+The CLI automatically detects:
+- Framework (Next.js, React, etc.)
+- Package manager (npm, bun, yarn, pnpm)
+- Project root directory
+- Existing configuration
+
+### 2. Configuration Files
+
+Depending on your setup, the following files are created:
+
+#### `c15t.config.ts`
+
+Main configuration file:
+
+```typescript
+import { defineConfig } from '@c15t/react';
+
+export const c15tConfig = defineConfig({
+  domain: 'your-domain.com',
+  storageMode: 'hosted', // or 'offline', 'self-hosted', 'custom'
+  // ... other options
+});
+```
+
+#### `c15t-backend.config.ts` (Self-hosted only)
+
+Backend configuration for self-hosted deployments:
+
+```typescript
+import { defineBackendConfig } from '@c15t/backend';
+
+export const backendConfig = defineBackendConfig({
+  database: {
+    type: 'postgres',
+    connectionString: process.env.DATABASE_URL,
+  },
+});
+```
+
+#### `.env` or `.env.local`
+
+Environment variables:
+
+```bash
+# For hosted mode
+C15T_API_KEY=your-api-key
+NEXT_PUBLIC_C15T_DOMAIN=your-domain.com
+
+# For self-hosted mode
+DATABASE_URL=postgresql://...
+C15T_BACKEND_URL=https://your-backend.com
+```
+
+### 3. Component Files
+
+Example components are generated based on your framework:
+
+#### Next.js App Router
+
+```typescript
+// app/layout.tsx
+import { C15TProvider } from '@c15t/react';
+import { c15tConfig } from '../c15t.config';
+
+export default function RootLayout({ children }) {
+  return (
+    <html>
+      <body>
+        <C15TProvider config={c15tConfig}>
+          {children}
+        </C15TProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+#### Next.js Pages Router
+
+```typescript
+// pages/_app.tsx
+import { C15TProvider } from '@c15t/react';
+import { c15tConfig } from '../c15t.config';
+
+export default function App({ Component, pageProps }) {
+  return (
+    <C15TProvider config={c15tConfig}>
+      <Component {...pageProps} />
+    </C15TProvider>
+  );
+}
+```
+
+#### React
+
+```typescript
+// src/App.tsx
+import { C15TProvider } from '@c15t/react';
+import { c15tConfig } from './c15t.config';
+
+export default function App() {
+  return (
+    <C15TProvider config={c15tConfig}>
+      {/* Your app */}
+    </C15TProvider>
+  );
+}
+```
+
+### 4. Dependencies
+
+The CLI installs required packages:
+
+**Hosted/Offline/Custom mode:**
+```json
+{
+  "dependencies": {
+    "@c15t/react": "latest"
+  }
+}
+```
+
+**Self-hosted mode:**
+```json
+{
+  "dependencies": {
+    "@c15t/react": "latest",
+    "@c15t/backend": "latest"
+  }
+}
+```
+
+## Interactive Setup Flow
+
+### Step 1: Storage Mode Selection
+
+```bash
+? How would you like to store consent decisions?
+❯ Hosted c15t (consent.io) - Recommended: Fully managed service
+  Offline Mode - Store in browser, no backend needed
+  Self-Hosted - Run your own c15t backend
+  Custom Implementation - Full control over storage logic
+```
+
+### Step 2: Domain Configuration
+
+```bash
+? What is your domain? › example.com
+```
+
+### Step 3: Framework-Specific Options
+
+#### For Next.js:
+
+```bash
+? Which Next.js router are you using?
+❯ App Router (app directory)
+  Pages Router (pages directory)
+```
+
+### Step 4: Environment Variables
+
+```bash
+? Would you like to use a .env file? (Y/n) › Yes
+? API Key (leave blank to add later) › ••••••••
+```
+
+### Step 5: Dependency Installation
+
+```bash
+? Install dependencies now? (Y/n) › Yes
+⠹ Installing dependencies...
+✓ Dependencies installed successfully
+```
+
+### Step 6: Completion
+
+```bash
+🚀 Setup completed successfully!
+
+Next steps:
+1. Import configuration in your app
+2. Add the C15TProvider to your root component
+3. Start your development server
+
+For more help, visit: https://c15t.com/docs
+```
+
+## Options
+
+### Skip Prompts
+
+```bash
+c15t generate -y
+```
+
+Uses default values for all prompts.
+
+### Custom Config Location
+
+```bash
+c15t generate --config ./custom-config.ts
+```
+
+### Debug Mode
+
+```bash
+c15t generate --logger debug
+```
+
+Shows detailed logs during initialization.
+
+### Disable Telemetry
+
+```bash
+c15t generate --no-telemetry
+```
+
+## Post-Initialization
+
+### Verify Setup
+
+1. Check that config files were created:
+   ```bash
+   ls -la c15t.config.ts
+   ```
+
+2. Verify dependencies:
+   ```bash
+   cat package.json | grep c15t
+   ```
+
+3. Test the configuration:
+   ```bash
+   npm run dev
+   # or
+   bun dev
+   ```
+
+### Update Configuration
+
+You can manually edit `c15t.config.ts` or run the generator again:
+
+```bash
+c15t generate
+```
+
+The CLI will detect existing configuration and offer to update it.
+
+## Troubleshooting
+
+### Framework Not Detected
+
+**Symptom:** CLI doesn't recognize your framework.
+
+**Solution:**
+```bash
+# Ensure package.json exists
+ls package.json
+
+# Check for framework dependencies
+cat package.json | grep -E "(next|react)"
+
+# Try from project root
+cd /path/to/project
+c15t generate
+```
+
+### Config File Exists
+
+**Symptom:** `c15t.config.ts already exists`
+
+**Solution:**
+```bash
+# The CLI will prompt to overwrite or merge
+? c15t.config.ts already exists. Overwrite? (y/N)
+
+# Or remove manually
+rm c15t.config.ts
+c15t generate
+```
+
+### Dependency Installation Failed
+
+**Symptom:** Dependencies not installed
+
+**Solution:**
+```bash
+# Install manually
+bun install @c15t/react
+
+# For self-hosted
+bun install @c15t/react @c15t/backend
+
+# Try again with debug logs
+c15t generate --logger debug
+```
+
+### Environment Variables Not Set
+
+**Symptom:** Environment variables missing
+
+**Solution:**
+```bash
+# Create .env.local manually
+echo "C15T_API_KEY=your-key" > .env.local
+
+# Or re-run generate
+c15t generate
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Generate Command" icon="code" href="/api/cli/generate">
+    Complete generate command reference
+  </Card>
+  <Card title="All Commands" icon="terminal" href="/api/cli/commands">
+    View all CLI commands
+  </Card>
+</CardGroup>

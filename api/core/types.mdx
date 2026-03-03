@@ -1,0 +1,434 @@
+---
+title: Types
+description: TypeScript type definitions for the c15t core package
+---
+
+## Overview
+
+This page documents all exported TypeScript types from the c15t core package.
+
+## Consent Types
+
+### AllConsentNames
+
+Defines all possible consent categories.
+
+```typescript
+type AllConsentNames = 
+  | 'necessary'
+  | 'functionality' 
+  | 'measurement'
+  | 'experience'
+  | 'marketing'
+```
+
+**Categories:**
+- `necessary` - Essential cookies required for basic site functionality
+- `functionality` - Cookies that enable enhanced features and personalization
+- `measurement` - Analytics and performance measurement cookies
+- `experience` - Cookies that improve user experience and interactions
+- `marketing` - Cookies used for advertising and marketing purposes
+
+### ConsentState
+
+Represents the state of consents for different types of data processing.
+
+```typescript
+type ConsentState = Record<AllConsentNames, boolean>
+```
+
+**Example:**
+
+```typescript
+const consentState: ConsentState = {
+  necessary: true,
+  functionality: true,
+  measurement: false,
+  experience: false,
+  marketing: false
+}
+```
+
+### ConsentType
+
+Defines the configuration structure for each consent type.
+
+```typescript
+interface ConsentType {
+  name: AllConsentNames;
+  gdprType: number;
+  defaultValue: boolean;
+  description: string;
+  display: boolean;
+  disabled?: boolean;
+}
+```
+
+<ResponseField name="name" type="AllConsentNames">
+  The consent category name.
+</ResponseField>
+
+<ResponseField name="gdprType" type="number">
+  GDPR category identifier (1-5):
+  - 1: Essential/Necessary
+  - 2: Functional
+  - 3: Experience/Preferences
+  - 4: Analytics/Measurement
+  - 5: Marketing/Advertising
+</ResponseField>
+
+<ResponseField name="defaultValue" type="boolean">
+  Initial consent state. Typically `true` only for necessary cookies.
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  User-friendly explanation of the consent category.
+</ResponseField>
+
+<ResponseField name="display" type="boolean">
+  Whether to show this consent option in the UI.
+</ResponseField>
+
+<ResponseField name="disabled" type="boolean">
+  Whether users can modify this consent. `true` for necessary cookies.
+</ResponseField>
+
+### ConsentInfo
+
+Information about the consent granted.
+
+```typescript
+interface ConsentInfo {
+  time: number;
+  id?: string;
+  identified?: boolean;
+  type?: 'all' | 'custom' | 'necessary';
+}
+```
+
+<ResponseField name="time" type="number">
+  The epoch timestamp of when the consent was recorded (e.g., 1761911048).
+</ResponseField>
+
+<ResponseField name="id" type="string">
+  The ID of the consent record. Optional as old or offline consent may not have an associated ID.
+</ResponseField>
+
+<ResponseField name="identified" type="boolean">
+  Whether the consent was identified by an external ID. Used to link consent to an authenticated user.
+</ResponseField>
+
+<ResponseField name="type" type="'all' | 'custom' | 'necessary'">
+  The type of consent granted. Deprecated and will be removed.
+</ResponseField>
+
+### consentTypes
+
+Predefined consent type configurations.
+
+```typescript
+const consentTypes: ConsentType[]
+```
+
+Array of default consent configurations for all GDPR consent types.
+
+## Location & Compliance Types
+
+### LocationInfo
+
+Represents location information for the user.
+
+```typescript
+interface LocationInfo {
+  countryCode: string | null;
+  regionCode: string | null;
+  jurisdiction: string | null;
+  jurisdictionMessage: string | null;
+}
+```
+
+<ResponseField name="countryCode" type="string | null">
+  ISO country code (e.g., 'US', 'GB', 'DE').
+</ResponseField>
+
+<ResponseField name="regionCode" type="string | null">
+  Region or state code within the country (e.g., 'CA', 'ENG').
+</ResponseField>
+
+<ResponseField name="jurisdiction" type="string | null">
+  Jurisdiction code (e.g., 'GDPR', 'CCPA').
+</ResponseField>
+
+<ResponseField name="jurisdictionMessage" type="string | null">
+  Human-readable message explaining the regulation requirement.
+</ResponseField>
+
+### JurisdictionInfo
+
+Represents jurisdiction information for consent requirements.
+
+```typescript
+interface JurisdictionInfo {
+  code: string;
+  message: string;
+}
+```
+
+<ResponseField name="code" type="string">
+  Code identifying the applicable regulation (e.g., 'GDPR', 'CCPA').
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Human-readable message explaining the regulation requirement.
+</ResponseField>
+
+### ConsentBannerResponse
+
+Response from the consent banner API.
+
+```typescript
+type ConsentBannerResponse = ContractsOutputs['consent']['showBanner']
+```
+
+Contains information about whether to show the consent banner and why.
+
+## Callback Types
+
+### Callbacks
+
+Defines callback functions for consent-related events.
+
+```typescript
+interface Callbacks {
+  onBannerFetched?: (payload: OnBannerFetchedPayload) => void;
+  onConsentSet?: (payload: OnConsentSetPayload) => void;
+  onError?: (payload: OnErrorPayload) => void;
+}
+```
+
+<ResponseField name="onBannerFetched" type="(payload: OnBannerFetchedPayload) => void">
+  Called when the consent banner is fetched.
+</ResponseField>
+
+<ResponseField name="onConsentSet" type="(payload: OnConsentSetPayload) => void">
+  Called when consent is set. Also called immediately when the store is initialized.
+</ResponseField>
+
+<ResponseField name="onError" type="(payload: OnErrorPayload) => void">
+  Called when an error occurs.
+</ResponseField>
+
+### OnBannerFetchedPayload
+
+```typescript
+interface OnBannerFetchedPayload {
+  showConsentBanner: boolean;
+  jurisdiction: JurisdictionInfo;
+  location: {
+    countryCode: string | null;
+    regionCode: string | null;
+  };
+  translations: {
+    language: string;
+    translations: Translations;
+  };
+}
+```
+
+### OnConsentSetPayload
+
+```typescript
+interface OnConsentSetPayload {
+  preferences: ConsentState;
+}
+```
+
+### OnErrorPayload
+
+```typescript
+interface OnErrorPayload {
+  error: string;
+}
+```
+
+## Script Types
+
+See [Script Loader](/api/core/script-loader) for detailed documentation on:
+- `Script` - Script configuration interface
+- `ScriptCallbackInfo` - Information passed to callbacks
+- `ScriptUpdateResult` - Result of updating scripts
+
+## Storage Types
+
+### StorageConfig
+
+Storage configuration options.
+
+```typescript
+interface StorageConfig {
+  storageKey?: string;
+  crossSubdomain?: boolean;
+  defaultDomain?: string;
+  defaultExpiryDays?: number;
+}
+```
+
+<ResponseField name="storageKey" type="string" default="c15t">
+  Custom storage key for localStorage and cookies.
+</ResponseField>
+
+<ResponseField name="crossSubdomain" type="boolean" default="false">
+  Enable cross-subdomain cookies by default.
+</ResponseField>
+
+<ResponseField name="defaultDomain" type="string">
+  Custom default domain for cookies. Overrides crossSubdomain if set.
+</ResponseField>
+
+<ResponseField name="defaultExpiryDays" type="number" default="365">
+  Default cookie expiration in days.
+</ResponseField>
+
+### CookieOptions
+
+Configuration options for cookie storage.
+
+```typescript
+interface CookieOptions {
+  expiryDays?: number;
+  crossSubdomain?: boolean;
+  domain?: string;
+  path?: string;
+  secure?: boolean;
+  sameSite?: 'Strict' | 'Lax' | 'None';
+}
+```
+
+<ResponseField name="expiryDays" type="number" default="365">
+  Cookie expiration in days.
+</ResponseField>
+
+<ResponseField name="crossSubdomain" type="boolean" default="false">
+  Enable cross-subdomain cookies. Automatically uses root domain when true.
+</ResponseField>
+
+<ResponseField name="domain" type="string">
+  Cookie domain. Takes precedence over crossSubdomain.
+</ResponseField>
+
+<ResponseField name="path" type="string" default="/">
+  Cookie path.
+</ResponseField>
+
+<ResponseField name="secure" type="boolean" default="true in production">
+  Whether the cookie should be secure (HTTPS only).
+</ResponseField>
+
+<ResponseField name="sameSite" type="'Strict' | 'Lax' | 'None'" default="'Lax'">
+  SameSite attribute for the cookie.
+</ResponseField>
+
+## User Types
+
+### User
+
+User information for linking consent to authenticated users.
+
+```typescript
+interface User {
+  id: string;
+}
+```
+
+<ResponseField name="id" type="string">
+  Your internal user ID from your authentication provider.
+</ResponseField>
+
+## Override Types
+
+### Overrides
+
+Forcefully override detected values.
+
+```typescript
+interface Overrides {
+  country?: string;
+  region?: string;
+  language?: string;
+}
+```
+
+<ResponseField name="country" type="string">
+  Country code to forcefully set (e.g., 'DE', 'US').
+</ResponseField>
+
+<ResponseField name="region" type="string">
+  Region code to forcefully set (e.g., 'BE', 'CA').
+</ResponseField>
+
+<ResponseField name="language" type="string">
+  Language code to forcefully set (e.g., 'de-DE', 'en-US').
+</ResponseField>
+
+## Condition Types
+
+### HasCondition
+
+Consent condition for evaluating consent requirements.
+
+```typescript
+type HasCondition<T extends AllConsentNames> = 
+  | T
+  | { and: HasCondition<T>[] }
+  | { or: HasCondition<T>[] }
+  | { not: HasCondition<T> }
+```
+
+Supports complex consent logic:
+
+**Examples:**
+
+```typescript
+// Simple
+const condition: HasCondition<AllConsentNames> = 'measurement';
+
+// AND logic
+const andCondition: HasCondition<AllConsentNames> = {
+  and: ['measurement', 'marketing']
+};
+
+// OR logic
+const orCondition: HasCondition<AllConsentNames> = {
+  or: ['measurement', 'marketing']
+};
+
+// NOT logic
+const notCondition: HasCondition<AllConsentNames> = {
+  not: 'marketing'
+};
+
+// Nested
+const nestedCondition: HasCondition<AllConsentNames> = {
+  and: [
+    'necessary',
+    { or: ['measurement', 'marketing'] },
+    { not: 'functionality' }
+  ]
+};
+```
+
+## Deprecated Types
+
+The following types are deprecated and will be removed in future versions:
+
+- `ComplianceRegion` - Use jurisdiction information from `LocationInfo` instead
+- `ComplianceSettings` - Unused functionality
+- `PrivacySettings` - Unused functionality
+- `HasConsentedProps` - Use `ConsentInfo` instead
+
+## Related
+
+- [createConsentManagerStore](/api/core/create-consent-store) - Create store instance
+- [PrivacyConsentState](/api/core/consent-state) - Store state interface
+- [Script Loader](/api/core/script-loader) - Script types
+- [Cookie Storage](/api/core/cookie-storage) - Storage types
