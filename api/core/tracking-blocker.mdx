@@ -1,0 +1,242 @@
+---
+title: Tracking Blocker
+description: Deprecated - Block network requests to tracking domains based on consent state
+---
+
+<Warning>
+  This module is deprecated and will be removed in v2.0. Use [Script Loader](/api/core/script-loader) instead for more granular control over script loading based on consent.
+</Warning>
+
+## Overview
+
+The Tracking Blocker module provides automatic blocking of tracking scripts and network requests until user consent is granted. It overrides global `fetch` and `XMLHttpRequest` APIs to enforce consent requirements.
+
+<Note>
+  This implementation may conflict with other libraries that also modify fetch/XMLHttpRequest APIs. The blocker takes precedence to ensure compliance.
+</Note>
+
+## Functions
+
+### createTrackingBlocker
+
+Creates a tracking blocker instance that handles blocking of tracking scripts and network requests.
+
+```typescript
+function createTrackingBlocker(
+  config?: TrackingBlockerConfig,
+  initialConsents?: ConsentState
+): TrackingBlocker
+```
+
+<ParamField path="config" type="TrackingBlockerConfig">
+  Configuration options for the tracking blocker.
+</ParamField>
+
+<ParamField path="initialConsents" type="ConsentState">
+  Initial consent state. If not provided, all consents default to false except `necessary` which defaults to true.
+</ParamField>
+
+<ResponseField name="return" type="TrackingBlocker">
+  Tracking blocker instance with management methods.
+  
+  <Expandable title="TrackingBlocker properties">
+    <ResponseField name="updateConsents" type="(newConsents: Partial<ConsentState>) => void">
+      Updates the current consent state. **Deprecated** - Use Script Loader instead.
+    </ResponseField>
+    <ResponseField name="destroy" type="() => void">
+      Destroys the tracking blocker and restores original fetch/XMLHttpRequest behavior.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { createTrackingBlocker } from '@c15t/core';
+
+const blocker = createTrackingBlocker({
+  disableAutomaticBlocking: false,
+  domainConsentMap: {
+    'google-analytics.com': 'measurement',
+    'facebook.com': 'marketing',
+  }
+});
+
+// Update consents
+blocker.updateConsents({ marketing: true });
+
+// Clean up when done
+blocker.destroy();
+```
+
+## Types
+
+### TrackingBlockerConfig
+
+Configuration options for the tracking blocker system.
+
+```typescript
+interface TrackingBlockerConfig {
+  disableAutomaticBlocking?: boolean;
+  overrideDomainConsentMap?: boolean;
+  domainConsentMap?: Record<string, AllConsentNames>;
+}
+```
+
+<ResponseField name="disableAutomaticBlocking" type="boolean" default="false">
+  Whether to disable automatic blocking of network requests. When `true`, the tracking blocker will not automatically intercept and block requests.
+</ResponseField>
+
+<ResponseField name="overrideDomainConsentMap" type="boolean" default="false">
+  Whether to completely override the default domain consent map. When `true`, only the domains specified in `domainConsentMap` will be considered for blocking. When `false`, the provided domains will be merged with the default domain map.
+</ResponseField>
+
+<ResponseField name="domainConsentMap" type="Record<string, AllConsentNames>">
+  Map of domains to their required consent types. Each domain should be mapped to the consent type required to allow requests to that domain. Domains are normalized (lowercase, no www, no port) before matching.
+  
+  ```typescript
+  {
+    'google-analytics.com': 'measurement',
+    'facebook.com': 'marketing',
+    'hotjar.com': 'experience'
+  }
+  ```
+</ResponseField>
+
+## How It Works
+
+The tracking blocker intercepts network requests by:
+
+1. **Overriding global APIs**: Replaces `window.fetch` and `window.XMLHttpRequest` with consent-aware wrappers
+2. **Domain matching**: Normalizes URLs and checks them against the domain consent map
+3. **Consent enforcement**: Blocks requests to domains that require consent until consent is granted
+4. **Event dispatching**: Fires `ConsentBlockedRequest` custom events when requests are blocked
+
+### Domain Normalization
+
+Domains are normalized before matching:
+- Converted to lowercase
+- `www.` prefix removed
+- Port numbers removed
+
+Subdomains are supported:
+```typescript
+{
+  'analytics.google.com': 'measurement',  // Matches exactly
+  'google.com': 'marketing'               // Matches google.com and *.google.com
+}
+```
+
+## Examples
+
+### Basic Usage
+
+```typescript
+import { createTrackingBlocker } from '@c15t/core';
+
+const blocker = createTrackingBlocker();
+
+// Update consents when user accepts
+blocker.updateConsents({
+  measurement: true,
+  marketing: false
+});
+```
+
+### Custom Domain Map
+
+```typescript
+import { createTrackingBlocker } from '@c15t/core';
+
+const blocker = createTrackingBlocker({
+  domainConsentMap: {
+    'google-analytics.com': 'measurement',
+    'googletagmanager.com': 'measurement',
+    'facebook.com': 'marketing',
+    'facebook.net': 'marketing',
+    'doubleclick.net': 'marketing',
+    'hotjar.com': 'experience',
+  }
+});
+```
+
+### Override Default Domains
+
+```typescript
+import { createTrackingBlocker } from '@c15t/core';
+
+const blocker = createTrackingBlocker({
+  overrideDomainConsentMap: true,
+  domainConsentMap: {
+    // Only these domains will be blocked
+    'myanalytics.com': 'measurement',
+  }
+});
+```
+
+### Listen for Blocked Requests
+
+```typescript
+import { createTrackingBlocker } from '@c15t/core';
+
+const blocker = createTrackingBlocker();
+
+document.addEventListener('ConsentBlockedRequest', (event) => {
+  console.log('Request blocked:', event.detail.url);
+});
+```
+
+### Disable Automatic Blocking
+
+```typescript
+import { createTrackingBlocker } from '@c15t/core';
+
+const blocker = createTrackingBlocker({
+  disableAutomaticBlocking: true
+});
+
+// No requests will be blocked, but you can still use the instance
+// for other purposes or enable blocking later
+```
+
+## Migration to Script Loader
+
+<Note>
+  The default domain map will be empty in v2.0. We recommend migrating to Script Loader for more granular control.
+</Note>
+
+**Before (Tracking Blocker):**
+```typescript
+import { createTrackingBlocker } from '@c15t/core';
+
+const blocker = createTrackingBlocker({
+  domainConsentMap: {
+    'google-analytics.com': 'measurement',
+  }
+});
+
+blocker.updateConsents({ measurement: true });
+```
+
+**After (Script Loader):**
+```typescript
+import { loadScripts } from '@c15t/core';
+
+const scripts = [
+  {
+    id: 'google-analytics',
+    src: 'https://www.googletagmanager.com/gtag/js?id=GA_ID',
+    category: 'measurement',
+    async: true,
+  }
+];
+
+loadScripts(scripts, { measurement: true });
+```
+
+## Related
+
+- [Script Loader](/api/core/script-loader) - Recommended alternative for v2.0
+- [createConsentManagerStore](/api/core/create-consent-store) - Create consent store
+- [ConsentState](/api/core/consent-state) - Consent state interface
+- [Types](/api/core/types) - Type definitions

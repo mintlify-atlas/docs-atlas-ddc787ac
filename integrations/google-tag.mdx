@@ -1,0 +1,305 @@
+---
+title: "Google Tag (gtag.js)"
+description: "Integrate Google Tag with consent mode support for Analytics, Ads, and Floodlight"
+icon: "google"
+---
+
+## Overview
+
+Google Tag (gtag.js) integration with built-in Google Consent Mode v2 support. This integration allows you to send data to linked Google products like Analytics, Ads, and Floodlight while respecting user consent preferences.
+
+<Info>
+  You can categorize Google Tag as **marketing** (Ads & Floodlight) or **measurement** (Analytics) depending on your use case.
+</Info>
+
+## Installation
+
+<CodeGroup>
+```bash npm
+npm install @c15t/scripts c15t
+```
+
+```bash yarn
+yarn add @c15t/scripts c15t
+```
+
+```bash pnpm
+pnpm add @c15t/scripts c15t
+```
+
+```bash bun
+bun add @c15t/scripts c15t
+```
+</CodeGroup>
+
+## Basic usage
+
+<CodeGroup>
+```typescript React
+import { loadScripts } from 'c15t';
+import { gtag } from '@c15t/scripts/google-tag';
+import { useEffect } from 'react';
+
+export function App() {
+  useEffect(() => {
+    const gtagScript = gtag({
+      id: 'G-XXXXXXX',
+      category: 'measurement', // or 'marketing'
+    });
+
+    loadScripts([gtagScript], {
+      consents: {
+        necessary: true,
+        functionality: false,
+        measurement: true, // Required for Analytics
+        marketing: false,
+        experience: false,
+      },
+    });
+  }, []);
+
+  return <div>Your app</div>;
+}
+```
+
+```typescript Next.js
+import { loadScripts } from 'c15t';
+import { gtag } from '@c15t/scripts/google-tag';
+import { useEffect } from 'react';
+
+export default function RootLayout({ children }) {
+  useEffect(() => {
+    const gtagScript = gtag({
+      id: 'G-XXXXXXX',
+      category: 'measurement',
+    });
+
+    loadScripts([gtagScript], {
+      consents: {
+        necessary: true,
+        functionality: false,
+        measurement: true,
+        marketing: false,
+        experience: false,
+      },
+    });
+  }, []);
+
+  return <html><body>{children}</body></html>;
+}
+```
+
+```typescript Vanilla JS
+import { loadScripts } from 'c15t';
+import { gtag } from '@c15t/scripts/google-tag';
+
+const gtagScript = gtag({
+  id: 'G-XXXXXXX',
+  category: 'measurement',
+});
+
+loadScripts([gtagScript], {
+  consents: {
+    necessary: true,
+    functionality: false,
+    measurement: true,
+    marketing: false,
+    experience: false,
+  },
+});
+```
+</CodeGroup>
+
+## Configuration
+
+### Options
+
+<ParamField path="id" type="string" required>
+  Your Google Tag ID. Begins with `G-`, `AW-`, or `DC-`.
+  
+  **Example**: `G-XXXXXXXXXX` (Analytics), `AW-XXXXXXXXXX` (Ads), `DC-XXXXXXXXXX` (Floodlight)
+</ParamField>
+
+<ParamField path="category" type="AllConsentNames" required>
+  The consent category to use for the gtag script. This is typically `'marketing'` (Ads & Floodlight) or `'measurement'` (Analytics).
+  
+  **Example**: `'measurement'`
+</ParamField>
+
+<ParamField path="script" type="Partial<Script>">
+  Override or extend default script values.
+  
+  **Defaults**:
+  - `id`: `'gtag'`
+  - `src`: `https://www.googletagmanager.com/gtag/js?id=${id}`
+  - `async`: `true`
+  - `alwaysLoad`: `true`
+  - `persistAfterConsentRevoked`: `true`
+</ParamField>
+
+## Google Consent Mode mapping
+
+The integration automatically maps c15t consent states to Google Consent Mode v2:
+
+| c15t Consent | Google Consent Categories |
+|--------------|---------------------------|
+| `necessary` | `security_storage` |
+| `functionality` | `functionality_storage` |
+| `measurement` | `analytics_storage` |
+| `marketing` | `ad_storage`, `ad_user_data`, `ad_personalization` |
+| `experience` | `personalization_storage` |
+
+## Advanced usage
+
+### Multiple Google Tags
+
+Load multiple Google products with different consent requirements:
+
+```typescript
+import { gtag } from '@c15t/scripts/google-tag';
+
+const analyticsScript = gtag({
+  id: 'G-XXXXXXXXXX',
+  category: 'measurement',
+  script: {
+    id: 'gtag-analytics',
+  },
+});
+
+const adsScript = gtag({
+  id: 'AW-XXXXXXXXXX',
+  category: 'marketing',
+  script: {
+    id: 'gtag-ads',
+  },
+});
+
+loadScripts([analyticsScript, adsScript], {
+  consents: {
+    necessary: true,
+    functionality: false,
+    measurement: true,
+    marketing: true,
+    experience: false,
+  },
+});
+```
+
+### Custom callbacks
+
+Add custom logic to the script lifecycle:
+
+```typescript
+const gtagScript = gtag({
+  id: 'G-XXXXXXXXXX',
+  category: 'measurement',
+  script: {
+    onLoad: ({ hasConsent }) => {
+      console.log('Google Tag loaded with consent:', hasConsent);
+    },
+    onConsentChange: ({ consents }) => {
+      console.log('Consent updated:', consents);
+    },
+  },
+});
+```
+
+### Using with consent manager
+
+Integrate with c15t's consent manager for automatic consent handling:
+
+```typescript
+import { createConsentManagerStore } from 'c15t';
+import { loadScripts } from 'c15t';
+import { gtag } from '@c15t/scripts/google-tag';
+
+const store = createConsentManagerStore({
+  config: {
+    projectId: 'your-project-id',
+  },
+});
+
+const gtagScript = gtag({
+  id: 'G-XXXXXXXXXX',
+  category: 'measurement',
+});
+
+// Scripts update automatically when consent changes
+store.subscribe((state) => {
+  loadScripts([gtagScript], {
+    consents: state.consents,
+  });
+});
+```
+
+## How it works
+
+1. **Before script loads**: Creates initialization script with `window.dataLayer` and `gtag()` function, sets consent defaults
+2. **On load**: Loads the Google Tag script with your ID and calls `gtag('config', id)`
+3. **On consent change**: Updates consent via `gtag('consent', 'update', ...)` based on c15t consent mapping
+4. **Persistent**: Script remains loaded even when consent is revoked, but respects consent mode settings
+
+<Info>
+  The script always loads (`alwaysLoad: true`) and persists after consent revocation (`persistAfterConsentRevoked: true`). Tracking is controlled via Google's consent mode API.
+</Info>
+
+## Tracking events
+
+After the script loads, use gtag's standard API:
+
+```typescript
+// Track page view
+window.gtag('config', 'G-XXXXXXXXXX', {
+  page_path: '/new-page',
+});
+
+// Track custom event
+window.gtag('event', 'purchase', {
+  transaction_id: 'T12345',
+  value: 99.99,
+  currency: 'USD',
+  items: [{
+    item_id: 'SKU_12345',
+    item_name: 'Product Name',
+    quantity: 1,
+  }],
+});
+
+// Set user properties
+window.gtag('set', 'user_properties', {
+  account_type: 'premium',
+});
+```
+
+## TypeScript
+
+Full TypeScript support with type inference:
+
+```typescript
+import type { Script } from 'c15t';
+import { gtag } from '@c15t/scripts/google-tag';
+import type { GtagOptions } from '@c15t/scripts/google-tag';
+
+const options: GtagOptions = {
+  id: 'G-XXXXXXXXXX',
+  category: 'measurement',
+};
+
+const script: Script = gtag(options);
+```
+
+## Resources
+
+<CardGroup cols={2}>
+  <Card title="Google Consent Mode" icon="google" href="https://developers.google.com/tag-platform/security/concepts/consent-mode">
+    Learn about Google's consent mode v2
+  </Card>
+  
+  <Card title="gtag.js Documentation" icon="book" href="https://developers.google.com/tag-platform/gtagjs">
+    Official Google Tag (gtag.js) documentation
+  </Card>
+  
+  <Card title="Source Code" icon="github" href="https://github.com/c15t/c15t/blob/main/packages/scripts/src/google-tag.ts">
+    View the integration source code
+  </Card>
+</CardGroup>

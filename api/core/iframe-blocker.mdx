@@ -1,0 +1,346 @@
+---
+title: Iframe Blocker
+description: Automatically block iframes until user consent is granted
+---
+
+## Overview
+
+The Iframe Blocker module provides automatic blocking and management of iframe elements based on user consent. It processes existing iframes on the page and manages their loading based on consent settings.
+
+<Note>
+  This is a headless implementation that does not render any DOM elements. It only manages the `src` and `data-src` attributes of existing iframe elements.
+</Note>
+
+## How It Works
+
+The iframe blocker:
+- Checks for the `data-category` attribute on iframe elements
+- Iframes **without** a `data-category` attribute are always allowed to load
+- Supports both lazy loading (`data-src`) and immediate loading (`src`) patterns
+- Automatically processes dynamically added iframes via MutationObserver
+- Blocks iframes by removing their `src` attribute until consent is granted
+
+## Functions
+
+### createIframeBlocker
+
+Creates an iframe blocker instance that handles blocking of iframes based on consent.
+
+```typescript
+function createIframeBlocker(
+  config?: IframeBlockerConfig,
+  initialConsents?: ConsentState
+): IframeBlocker
+```
+
+<ParamField path="config" type="IframeBlockerConfig">
+  Configuration options for the iframe blocker.
+</ParamField>
+
+<ParamField path="initialConsents" type="ConsentState">
+  Initial consent state. If not provided, all consents default to false except `necessary` which defaults to true.
+</ParamField>
+
+<ResponseField name="return" type="IframeBlocker">
+  Iframe blocker instance with management methods.
+  
+  <Expandable title="IframeBlocker properties">
+    <ResponseField name="updateConsents" type="(newConsents: Partial<ConsentState>) => void">
+      Updates the current consent state and processes all iframes accordingly.
+    </ResponseField>
+    <ResponseField name="processIframes" type="() => void">
+      Processes all iframes on the page based on current consent state.
+    </ResponseField>
+    <ResponseField name="destroy" type="() => void">
+      Destroys the iframe blocker and stops observing for new iframes.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { createIframeBlocker } from '@c15t/core';
+
+const blocker = createIframeBlocker({
+  disableAutomaticBlocking: false
+});
+
+// Update consents when user accepts
+blocker.updateConsents({ marketing: true });
+
+// Manually process all iframes
+blocker.processIframes();
+
+// Clean up
+blocker.destroy();
+```
+
+### getIframeConsentCategories
+
+Extracts consent categories from all iframes with `data-category` attributes on the page.
+
+```typescript
+function getIframeConsentCategories(): AllConsentNames[]
+```
+
+<ResponseField name="return" type="AllConsentNames[]">
+  Array of unique consent category names found in iframes.
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { getIframeConsentCategories } from '@c15t/core';
+
+// HTML:
+// <iframe data-category="marketing" data-src="https://youtube.com/embed/..." />
+// <iframe data-category="measurement" data-src="https://analytics.com/..." />
+
+const categories = getIframeConsentCategories();
+console.log(categories); // ['marketing', 'measurement']
+```
+
+### processAllIframes
+
+Processes all iframes on the page based on current consent state. This is a pure function following the script loader pattern.
+
+```typescript
+function processAllIframes(consents: ConsentState): void
+```
+
+<ParamField path="consents" type="ConsentState" required>
+  Current consent state to evaluate iframes against.
+</ParamField>
+
+**Example:**
+
+```typescript
+import { processAllIframes } from '@c15t/core';
+
+// Process all iframes with current consents
+processAllIframes({ marketing: true, necessary: true });
+
+// After consent changes, process again
+processAllIframes({ marketing: false, necessary: true });
+```
+
+### setupIframeObserver
+
+Creates and starts a MutationObserver to watch for dynamically added iframes.
+
+```typescript
+function setupIframeObserver(
+  getConsents: () => ConsentState,
+  onCategoriesDiscovered?: (categories: AllConsentNames[]) => void
+): MutationObserver
+```
+
+<ParamField path="getConsents" type="() => ConsentState" required>
+  Function to get current consent state. Called whenever new iframes are detected.
+</ParamField>
+
+<ParamField path="onCategoriesDiscovered" type="(categories: AllConsentNames[]) => void">
+  Optional callback invoked when new categories are discovered from dynamically added iframes.
+</ParamField>
+
+<ResponseField name="return" type="MutationObserver">
+  The active MutationObserver instance. Call `.disconnect()` to stop observing.
+</ResponseField>
+
+**Example:**
+
+```typescript
+import { setupIframeObserver } from '@c15t/core';
+
+const observer = setupIframeObserver(
+  () => store.getState().consents,
+  (categories) => {
+    console.log('New categories discovered:', categories);
+    store.getState().updateConsentCategories(categories);
+  }
+);
+
+// Later, clean up
+observer.disconnect();
+```
+
+## Types
+
+### IframeBlockerConfig
+
+Configuration for iframe blocking behavior.
+
+```typescript
+interface IframeBlockerConfig {
+  disableAutomaticBlocking?: boolean;
+}
+```
+
+<ResponseField name="disableAutomaticBlocking" type="boolean" default="false">
+  Whether to disable automatic iframe blocking. When `true`, the blocker will not automatically process iframes or observe for new ones.
+</ResponseField>
+
+### IframeBlocker
+
+Interface for the iframe blocker instance.
+
+```typescript
+interface IframeBlocker {
+  updateConsents: (newConsents: Partial<ConsentState>) => void;
+  processIframes: () => void;
+  destroy: () => void;
+}
+```
+
+<ResponseField name="updateConsents" type="(newConsents: Partial<ConsentState>) => void">
+  Updates the consents and processes iframes accordingly.
+</ResponseField>
+
+<ResponseField name="processIframes" type="() => void">
+  Processes all iframes on the page based on current consent state.
+</ResponseField>
+
+<ResponseField name="destroy" type="() => void">
+  Destroys the iframe blocker and restores original behavior.
+</ResponseField>
+
+## Usage Patterns
+
+### Basic Setup
+
+```html
+<!-- Iframe with consent requirement -->
+<iframe 
+  data-category="marketing" 
+  data-src="https://www.youtube.com/embed/VIDEO_ID"
+  width="560" 
+  height="315"
+></iframe>
+
+<!-- Iframe without consent requirement (always loads) -->
+<iframe 
+  src="https://example.com/always-load"
+  width="560" 
+  height="315"
+></iframe>
+```
+
+```typescript
+import { createIframeBlocker } from '@c15t/core';
+
+const blocker = createIframeBlocker();
+
+// When user grants marketing consent
+blocker.updateConsents({ marketing: true });
+// The YouTube iframe will now load
+```
+
+### Lazy Loading Pattern
+
+The iframe blocker supports the lazy loading pattern with `data-src`:
+
+```html
+<iframe 
+  data-category="marketing" 
+  data-src="https://www.youtube.com/embed/VIDEO_ID"
+  loading="lazy"
+></iframe>
+```
+
+- **No consent**: iframe has no `src` attribute, won't load
+- **Consent granted**: `data-src` value is moved to `src`, iframe loads
+- **Consent revoked**: `src` attribute is removed
+
+### Integration with Consent Store
+
+```typescript
+import { createConsentManagerStore } from '@c15t/core';
+import { setupIframeObserver, processAllIframes } from '@c15t/core';
+
+const store = createConsentManagerStore({
+  mode: 'c15t',
+  scripts: []
+});
+
+// Set up observer for dynamic iframes
+const observer = setupIframeObserver(
+  () => store.getState().gdprConsents,
+  (categories) => {
+    store.getState().updateConsentCategories(categories);
+  }
+);
+
+// Process iframes when consent changes
+store.subscribe((state) => {
+  processAllIframes(state.gdprConsents);
+});
+```
+
+### Manual Control
+
+```typescript
+import { createIframeBlocker } from '@c15t/core';
+
+// Create blocker without automatic processing
+const blocker = createIframeBlocker({
+  disableAutomaticBlocking: true
+});
+
+// Manually process when needed
+function handleConsentUpdate(consents) {
+  blocker.updateConsents(consents);
+  blocker.processIframes();
+}
+```
+
+### Dynamic Iframe Discovery
+
+```typescript
+import { getIframeConsentCategories } from '@c15t/core';
+
+// Discover what consent categories are needed
+const categories = getIframeConsentCategories();
+
+// Update UI to show only relevant consent toggles
+if (categories.includes('marketing')) {
+  showMarketingConsentToggle();
+}
+if (categories.includes('measurement')) {
+  showMeasurementConsentToggle();
+}
+```
+
+## Error Handling
+
+The iframe blocker throws an error if an iframe has an invalid `data-category` attribute:
+
+```html
+<!-- This will throw an error -->
+<iframe data-category="invalid-category" data-src="..."></iframe>
+```
+
+```typescript
+// Error: Invalid category attribute "invalid-category" on iframe. 
+// Must be one of: necessary, functionality, experience, measurement, marketing
+```
+
+## React Integration
+
+For React applications, use the [`Frame` component](/api/react/frame) instead, which provides a higher-level API:
+
+```tsx
+import { Frame } from '@c15t/react';
+
+<Frame category="marketing">
+  <iframe src="https://www.youtube.com/embed/VIDEO_ID" />
+</Frame>
+```
+
+## Related
+
+- [Frame Component](/api/react/frame) - React component for consent-gated iframes
+- [Script Loader](/api/core/script-loader) - Load scripts based on consent
+- [createConsentManagerStore](/api/core/create-consent-store) - Create consent store
+- [ConsentState](/api/core/consent-state) - Consent state interface
+- [Types](/api/core/types) - Type definitions

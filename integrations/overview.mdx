@@ -35,8 +35,16 @@ c15t provides pre-built script integrations for popular analytics and marketing 
     Manage all your marketing tags with Google's consent mode
   </Card>
   
+  <Card title="Google Tag (gtag.js)" icon="google" href="/integrations/google-tag">
+    Analytics, Ads, and Floodlight tracking with consent mode
+  </Card>
+  
   <Card title="PostHog" icon="chart-line" href="/integrations/posthog">
     Open-source product analytics with opt-in/opt-out support
+  </Card>
+  
+  <Card title="Databuddy" icon="chart-simple" href="/integrations/databuddy">
+    Privacy-focused analytics with consent-aware tracking
   </Card>
   
   <Card title="Meta Pixel" icon="meta" href="/integrations/meta-pixel">
@@ -114,8 +122,9 @@ loadScripts([gtmScript], {
 Each integration is assigned a default consent category:
 
 - **necessary**: Google Tag Manager (since it manages other scripts)
-- **measurement**: PostHog
+- **measurement**: PostHog, Databuddy
 - **marketing**: Meta Pixel, TikTok Pixel, LinkedIn Insights, Microsoft UET, X Pixel
+- **measurement or marketing**: Google Tag (depending on use case)
 
 You can override the category for any integration:
 

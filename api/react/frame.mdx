@@ -1,0 +1,416 @@
+---
+title: Frame
+description: Consent-gated component for embedded content like iframes and videos
+---
+
+## Overview
+
+The `Frame` component provides consent-gated content rendering for embedded content such as iframes, videos, and third-party widgets. It acts as a consent boundary, conditionally rendering children based on user consent and displaying a placeholder when permission is not granted.
+
+<Note>
+  Children are not mounted until consent is given, preventing unnecessary network requests and ensuring GDPR compliance.
+</Note>
+
+## Import
+
+```tsx
+import { Frame } from '@c15t/react';
+```
+
+## Basic Usage
+
+```tsx
+import { Frame } from '@c15t/react';
+
+function VideoEmbed() {
+  return (
+    <Frame category="marketing">
+      <iframe 
+        src="https://www.youtube.com/embed/VIDEO_ID"
+        width="560"
+        height="315"
+        title="YouTube video"
+      />
+    </Frame>
+  );
+}
+```
+
+## Props
+
+### FrameProps
+
+```typescript
+interface FrameProps extends ComponentPropsWithRef<'div'> {
+  children: ReactNode;
+  category: AllConsentNames;
+  placeholder?: ReactNode;
+  noStyle?: boolean;
+  theme?: FrameTheme;
+}
+```
+
+<ParamField path="children" type="ReactNode" required>
+  Content rendered when consent is granted. Children are not mounted until consent is given, preventing unnecessary network requests.
+</ParamField>
+
+<ParamField path="category" type="AllConsentNames" required>
+  Consent category required to render children. Must be one of:
+  - `'necessary'`
+  - `'functionality'`
+  - `'experience'`
+  - `'measurement'`
+  - `'marketing'`
+</ParamField>
+
+<ParamField path="placeholder" type="ReactNode">
+  A custom placeholder component to display when consent is not met. If not provided, a default placeholder with a consent button will be displayed.
+</ParamField>
+
+<ParamField path="noStyle" type="boolean" default="false">
+  When true, removes all default styling from the component.
+</ParamField>
+
+<ParamField path="theme" type="FrameTheme">
+  Custom theme to override default styles while maintaining structure and accessibility. Merges with defaults. Ignored when `noStyle={true}`.
+  
+  See [FrameTheme](#frametheme) for available customization options.
+</ParamField>
+
+<ParamField path="...props" type="ComponentPropsWithRef<'div'>">
+  All other props are forwarded to the root `div` element, including `className`, `style`, and `ref`.
+</ParamField>
+
+## Compound Components
+
+The `Frame` component includes compound components for building custom placeholders:
+
+### Frame.Root
+
+Root container for custom placeholders.
+
+```tsx
+import { Frame } from '@c15t/react';
+
+<Frame category="marketing" placeholder={
+  <Frame.Root>
+    {/* Custom placeholder content */}
+  </Frame.Root>
+}>
+  <iframe src="..." />
+</Frame>
+```
+
+### Frame.Title
+
+Title element for custom placeholders.
+
+```tsx
+import { Frame } from '@c15t/react';
+
+<Frame category="marketing" placeholder={
+  <Frame.Root>
+    <Frame.Title>Custom Title</Frame.Title>
+  </Frame.Root>
+}>
+  <iframe src="..." />
+</Frame>
+```
+
+### Frame.Button
+
+Consent button for custom placeholders.
+
+```tsx
+import { Frame } from '@c15t/react';
+
+<Frame category="marketing" placeholder={
+  <Frame.Root>
+    <Frame.Title>Enable Marketing Content</Frame.Title>
+    <Frame.Button category="marketing">
+      Allow Marketing Cookies
+    </Frame.Button>
+  </Frame.Root>
+}>
+  <iframe src="..." />
+</Frame>
+```
+
+## Theme Customization
+
+### FrameTheme
+
+Configuration object for styling different parts of the Frame component.
+
+```typescript
+type FrameTheme = Partial<{
+  'frame.placeholder.root': ThemeValue<PlaceholderCSSVariables>;
+  'frame.placeholder.title': ThemeValue;
+  'frame.placeholder.button': ThemeValue<ButtonCSSVariables>;
+}>;
+```
+
+<ParamField path="frame.placeholder.root" type="ThemeValue<PlaceholderCSSVariables>">
+  Styles for the placeholder root container element.
+  
+  **Available CSS variables:**
+  - `--frame-placeholder-gap`
+  - `--frame-placeholder-border-radius`
+  - `--frame-placeholder-border-width`
+  - `--frame-placeholder-border-color`
+  - `--frame-placeholder-border-color-dark`
+  - `--frame-placeholder-background-color`
+  - `--frame-placeholder-background-color-dark`
+  - `--frame-placeholder-text-color`
+  - `--frame-placeholder-text-color-dark`
+  - `--frame-placeholder-title-color`
+  - `--frame-placeholder-title-color-dark`
+  - `--frame-placeholder-shadow`
+  - `--frame-placeholder-shadow-dark`
+  - `--frame-placeholder-opacity`
+  - `--frame-placeholder-animation`
+  - `--frame-font-family`
+  - `--frame-line-height`
+</ParamField>
+
+<ParamField path="frame.placeholder.title" type="ThemeValue">
+  Styles for the placeholder title element.
+</ParamField>
+
+<ParamField path="frame.placeholder.button" type="ThemeValue<ButtonCSSVariables>">
+  Styles for the placeholder button element. See button component documentation for available CSS variables.
+</ParamField>
+
+## Examples
+
+### YouTube Embed
+
+```tsx
+import { Frame } from '@c15t/react';
+
+function YouTubeEmbed() {
+  return (
+    <Frame category="marketing">
+      <iframe
+        src="https://www.youtube.com/embed/MtN1YnoL46Q"
+        width="560"
+        height="315"
+        title="YouTube video player"
+        frameBorder="0"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+      />
+    </Frame>
+  );
+}
+```
+
+### Vimeo Embed
+
+```tsx
+import { Frame } from '@c15t/react';
+
+function VimeoEmbed() {
+  return (
+    <Frame category="marketing">
+      <iframe
+        src="https://player.vimeo.com/video/VIDEO_ID"
+        width="640"
+        height="360"
+        frameBorder="0"
+        allow="autoplay; fullscreen; picture-in-picture"
+        allowFullScreen
+      />
+    </Frame>
+  );
+}
+```
+
+### Google Maps
+
+```tsx
+import { Frame } from '@c15t/react';
+
+function MapEmbed() {
+  return (
+    <Frame category="functionality">
+      <iframe
+        src="https://www.google.com/maps/embed?pb=..."
+        width="600"
+        height="450"
+        style={{ border: 0 }}
+        allowFullScreen
+        loading="lazy"
+        referrerPolicy="no-referrer-when-downgrade"
+      />
+    </Frame>
+  );
+}
+```
+
+### Custom Placeholder
+
+```tsx
+import { Frame } from '@c15t/react';
+
+function CustomPlaceholder() {
+  return (
+    <Frame 
+      category="marketing"
+      placeholder={
+        <Frame.Root>
+          <Frame.Title>
+            🎥 Video Content Requires Marketing Consent
+          </Frame.Title>
+          <p style={{ margin: '1rem 0', opacity: 0.8 }}>
+            This YouTube video requires marketing cookies to load.
+            We respect your privacy and won't load it without your permission.
+          </p>
+          <Frame.Button category="marketing">
+            Enable Marketing Cookies
+          </Frame.Button>
+        </Frame.Root>
+      }
+    >
+      <iframe src="https://www.youtube.com/embed/VIDEO_ID" />
+    </Frame>
+  );
+}
+```
+
+### Unstyled Frame
+
+```tsx
+import { Frame } from '@c15t/react';
+
+function UnstyledFrame() {
+  return (
+    <Frame 
+      category="marketing"
+      noStyle
+      placeholder={
+        <div className="my-custom-placeholder">
+          <button onClick={() => setConsent({ marketing: true })}>
+            Load Content
+          </button>
+        </div>
+      }
+    >
+      <iframe src="..." />
+    </Frame>
+  );
+}
+```
+
+### Themed Frame
+
+```tsx
+import { Frame } from '@c15t/react';
+
+function ThemedFrame() {
+  return (
+    <Frame 
+      category="marketing"
+      theme={{
+        'frame.placeholder.root': {
+          '--frame-placeholder-background-color': '#f0f9ff',
+          '--frame-placeholder-border-color': '#0ea5e9',
+          '--frame-placeholder-border-radius': '16px',
+        },
+        'frame.placeholder.title': {
+          color: '#0c4a6e',
+          fontSize: '1.25rem',
+        },
+        'frame.placeholder.button': {
+          '--button-background': '#0ea5e9',
+          '--button-background-hover': '#0284c7',
+        }
+      }}
+    >
+      <iframe src="..." />
+    </Frame>
+  );
+}
+```
+
+### Responsive Frame
+
+```tsx
+import { Frame } from '@c15t/react';
+
+function ResponsiveFrame() {
+  return (
+    <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0 }}>
+      <Frame 
+        category="marketing"
+        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
+      >
+        <iframe
+          src="https://www.youtube.com/embed/VIDEO_ID"
+          style={{ width: '100%', height: '100%' }}
+          frameBorder="0"
+          allowFullScreen
+        />
+      </Frame>
+    </div>
+  );
+}
+```
+
+### Multiple Categories
+
+For content requiring multiple consent categories, use the core `has` utility with complex conditions:
+
+```tsx
+import { Frame } from '@c15t/react';
+import { useConsentManager } from '@c15t/react';
+
+function AdvancedTracking() {
+  const { has } = useConsentManager();
+  
+  // Check for complex conditions
+  const hasRequiredConsent = has({ and: ['measurement', 'marketing'] });
+  
+  if (!hasRequiredConsent) {
+    return <div>Requires both measurement and marketing consent</div>;
+  }
+  
+  return (
+    <iframe src="https://advanced-tracking.example.com" />
+  );
+}
+```
+
+## Behavior
+
+### Mounting Strategy
+
+- **No consent**: Placeholder is shown, children are **not mounted**
+- **Consent granted**: Children are mounted, placeholder is removed
+- **Consent revoked**: Children are **unmounted**, placeholder is shown again
+
+This ensures:
+- No network requests are made until consent is granted
+- Scripts in children don't execute without consent
+- Resources are freed when consent is revoked
+
+### FOUC Prevention
+
+The component prevents Flash of Unstyled Content (FOUC) by:
+1. Rendering nothing until styles are loaded
+2. Using `requestAnimationFrame` to ensure CSS is applied
+3. Maintaining accessibility during the loading phase
+
+### Accessibility
+
+- Forwards `ref` to root element
+- Supports all standard `div` attributes
+- Default placeholder includes semantic button for consent
+- Maintains focus management when switching between placeholder and content
+
+## Related
+
+- [Iframe Blocker](/api/core/iframe-blocker) - Core iframe blocking logic
+- [useConsentManager](/api/react/hooks#useconsentmanager) - Access consent state
+- [ConsentManagerProvider](/api/react/provider) - Setup consent context
+- [Script Loader](/api/core/script-loader) - Load scripts based on consent

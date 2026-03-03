@@ -17,6 +17,22 @@ The c15t Node SDK client provides methods organized into two main namespaces:
 
 Records a user's consent preferences and creates necessary consent records.
 
+**HTTP Method:** `POST`  
+**Endpoint:** `/consent/set`
+
+This endpoint handles various types of consent submissions:
+
+1. **Cookie Banner Consent** - Records granular cookie preferences with multiple consent purposes
+2. **Policy-Based Consent** - Privacy Policy, DPA, or Terms and Conditions acceptance
+3. **Other Consent Types** - Marketing communications, age verification, or custom consent types
+
+The endpoint performs the following operations:
+- Creates or retrieves subject records
+- Validates domain and policy information
+- Creates consent records with audit trails
+- Records consent purposes and preferences
+- Generates audit logs for compliance
+
 #### Parameters
 
 <ParamField path="domain" type="string" required>
@@ -62,18 +78,58 @@ Records a user's consent preferences and creates necessary consent records.
 
 #### Response
 
+<ResponseField name="id" type="string" required>
+  Unique consent record ID.
+</ResponseField>
+
+<ResponseField name="subjectId" type="string">
+  Internal subject ID if provided.
+</ResponseField>
+
+<ResponseField name="externalSubjectId" type="string">
+  External subject ID if provided.
+</ResponseField>
+
+<ResponseField name="domainId" type="string" required>
+  Unique domain ID.
+</ResponseField>
+
+<ResponseField name="domain" type="string" required>
+  Domain name for which consent was recorded.
+</ResponseField>
+
+<ResponseField name="type" type="PolicyType" required>
+  The type of consent that was recorded.
+</ResponseField>
+
+<ResponseField name="status" type="string" required>
+  Current status of the consent record.
+</ResponseField>
+
+<ResponseField name="recordId" type="string" required>
+  Unique consent record ID for audit trail.
+</ResponseField>
+
+<ResponseField name="metadata" type="Record<string, unknown>">
+  Additional metadata attached to the consent record.
+</ResponseField>
+
+<ResponseField name="givenAt" type="Date" required>
+  Timestamp when consent was given.
+</ResponseField>
+
 ```typescript
 {
-  id: string;                          // Consent ID
-  subjectId?: string;                  // Subject ID
-  externalSubjectId?: string;          // External subject ID
-  domainId: string;                    // Domain ID
-  domain: string;                      // Domain name
-  type: PolicyType;                    // Consent type
-  status: string;                      // Consent status
-  recordId: string;                    // Consent record ID
-  metadata?: Record<string, unknown>;  // Additional metadata
-  givenAt: Date;                       // Timestamp when consent was given
+  id: string;
+  subjectId?: string;
+  externalSubjectId?: string;
+  domainId: string;
+  domain: string;
+  type: PolicyType;
+  status: string;
+  recordId: string;
+  metadata?: Record<string, unknown>;
+  givenAt: Date;
 }
 ```
 
@@ -117,6 +173,19 @@ console.log('Consent recorded:', response.id);
 
 Verifies if a user has given valid consent for a specific policy and domain.
 
+**HTTP Method:** `POST`  
+**Endpoint:** `/consent/verify`
+
+This endpoint performs comprehensive consent verification by:
+
+1. Validating the subject's identity (using subjectId or externalSubjectId)
+2. Verifying the domain's existence and validity
+3. Checking if the specified policy exists and is active
+4. Validating that all required purposes have been consented to
+5. Ensuring the consent record is current and valid
+
+Use this endpoint to ensure compliance with privacy regulations and to verify user consent before processing personal data.
+
 #### Parameters
 
 <ParamField path="domain" type="string" required>
@@ -145,13 +214,35 @@ Verifies if a user has given valid consent for a specific policy and domain.
 
 #### Response
 
+<ResponseField name="isValid" type="boolean" required>
+  Whether the consent is valid and all requirements are met.
+</ResponseField>
+
+<ResponseField name="reasons" type="string[]">
+  Array of reasons why consent is invalid (only present when `isValid` is false).
+</ResponseField>
+
+<ResponseField name="consent" type="object">
+  Consent details if valid (only present when `isValid` is true).
+  
+  <Expandable title="properties">
+    <ResponseField name="id" type="string" required>
+      Unique consent record ID.
+    </ResponseField>
+    
+    <ResponseField name="purposeIds" type="string[]" required>
+      Array of consent purpose IDs that were consented to.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
 ```typescript
 {
-  isValid: boolean;              // Whether the consent is valid
-  reasons?: string[];            // Reasons if consent is invalid
-  consent?: {                    // Consent details if valid
-    id: string;                  // Consent ID
-    purposeIds: string[];        // Consented purpose IDs
+  isValid: boolean;
+  reasons?: string[];
+  consent?: {
+    id: string;
+    purposeIds: string[];
   };
 }
 ```
@@ -191,29 +282,100 @@ if (verification.isValid) {
 
 Determines if a user should see a consent banner based on their location and applicable privacy regulations.
 
+**HTTP Method:** `GET`  
+**Endpoint:** `/show-consent-banner`
+
+This endpoint performs the following checks:
+
+1. **Detects User Location** using various header information:
+   - Cloudflare country headers
+   - Vercel IP country headers
+   - AWS CloudFront headers
+   - Custom country code headers
+
+2. **Determines Applicable Jurisdiction** based on location:
+   - GDPR (EU/EEA/UK)
+   - Swiss Data Protection Act
+   - LGPD (Brazil)
+   - PIPEDA (Canada)
+   - Australian Privacy Principles
+   - APPI (Japan)
+   - PIPA (South Korea)
+
+3. **Returns Localized Translations** and branding configuration
+
 #### Parameters
 
 This method uses headers automatically from the request context (when used server-side). No parameters are required.
 
 #### Response
 
+<ResponseField name="showConsentBanner" type="boolean" required>
+  Whether the consent banner should be displayed based on the user's jurisdiction.
+</ResponseField>
+
+<ResponseField name="jurisdiction" type="object" required>
+  Information about the detected jurisdiction and its requirements.
+  
+  <Expandable title="properties">
+    <ResponseField name="code" type="string" required>
+      Jurisdiction code: `GDPR`, `CH`, `BR`, `PIPEDA`, `AU`, `APPI`, `PIPA`, or `NONE`.
+    </ResponseField>
+    
+    <ResponseField name="message" type="string" required>
+      Human-readable description of the jurisdiction's consent requirements.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="location" type="object" required>
+  User's detected location information.
+  
+  <Expandable title="properties">
+    <ResponseField name="countryCode" type="string | null" required>
+      ISO 3166-1 alpha-2 country code (e.g., 'US', 'GB', 'DE').
+    </ResponseField>
+    
+    <ResponseField name="regionCode" type="string | null" required>
+      Region or state code within the country (e.g., 'CA' for California).
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="translations" type="object" required>
+  Localized translation strings for the consent banner.
+  
+  <Expandable title="properties">
+    <ResponseField name="language" type="string" required>
+      Language code for the translations (e.g., 'en', 'es', 'de').
+    </ResponseField>
+    
+    <ResponseField name="translations" type="object" required>
+      Translation strings object containing localized text for all banner elements. See [Types Reference](/api/node-sdk/types#translationinfo) for complete structure.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="branding" type="'c15t' | 'consent' | 'none'" required>
+  Branding preference for the consent banner display.
+</ResponseField>
+
 ```typescript
 {
-  showConsentBanner: boolean;    // Whether to show the banner
-  jurisdiction: {                // Detected jurisdiction info
-    code: string;                // Jurisdiction code (e.g., 'GDPR')
-    name: string;                // Jurisdiction name
-    requiresConsent: boolean;    // Whether consent is required
+  showConsentBanner: boolean;
+  jurisdiction: {
+    code: 'GDPR' | 'CH' | 'BR' | 'PIPEDA' | 'AU' | 'APPI' | 'PIPA' | 'NONE';
+    message: string;
   };
-  location: {                    // User's detected location
-    countryCode: string | null;  // ISO country code
-    regionCode: string | null;   // Region/state code
+  location: {
+    countryCode: string | null;
+    regionCode: string | null;
   };
-  translations: {                // Localized translations
-    language: string;            // Language code
-    translations: object;        // Translation strings
+  translations: {
+    language: string;
+    translations: object;
   };
-  branding: 'c15t' | 'consent' | 'none';  // Branding preference
+  branding: 'c15t' | 'consent' | 'none';
 }
 ```
 
@@ -235,7 +397,10 @@ if (bannerInfo.showConsentBanner) {
 
 ### `client.consent.identify()`
 
-Links a subject's external ID to an existing consent record by consent ID.
+Links a subject's external ID to an existing consent record by consent ID. This is used to identify a user across multiple devices and sessions.
+
+**HTTP Method:** `PATCH`  
+**Endpoint:** `/consent/identify`
 
 #### Parameters
 
@@ -253,9 +418,13 @@ Links a subject's external ID to an existing consent record by consent ID.
 
 #### Response
 
+<ResponseField name="success" type="boolean" required>
+  Whether the identification was successful.
+</ResponseField>
+
 ```typescript
 {
-  success: boolean;  // Whether the identification was successful
+  success: boolean;
 }
 ```
 
@@ -287,25 +456,91 @@ if (result.success) {
 
 Returns the current operational status and health metrics of the service.
 
+**HTTP Method:** `GET`  
+**Endpoint:** `/status`
+
+This endpoint provides real-time information about:
+- Overall service status (ok/error)
+- Current API version
+- Server timestamp
+- Storage system status and availability
+- Client information (IP, User Agent, Region)
+
+Use this endpoint for health checks, monitoring, and service status verification.
+
 #### Parameters
 
 None.
 
 #### Response
 
+<ResponseField name="status" type="'ok' | 'error'" required>
+  Overall operational status of the service.
+</ResponseField>
+
+<ResponseField name="version" type="string" required>
+  Current API version string.
+</ResponseField>
+
+<ResponseField name="timestamp" type="Date" required>
+  Current server timestamp.
+</ResponseField>
+
+<ResponseField name="storage" type="object" required>
+  Storage system status and information.
+  
+  <Expandable title="properties">
+    <ResponseField name="type" type="string" required>
+      Storage system type (e.g., 'postgres', 'mongodb').
+    </ResponseField>
+    
+    <ResponseField name="available" type="boolean" required>
+      Whether the storage system is currently available and responsive.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="client" type="object" required>
+  Information about the requesting client.
+  
+  <Expandable title="properties">
+    <ResponseField name="ip" type="string | null" required>
+      Client IP address if detectable.
+    </ResponseField>
+    
+    <ResponseField name="userAgent" type="string | null" required>
+      Client user agent string if provided.
+    </ResponseField>
+    
+    <ResponseField name="region" type="object" required>
+      Client's detected geographic region.
+      
+      <Expandable title="properties">
+        <ResponseField name="countryCode" type="string | null" required>
+          ISO country code.
+        </ResponseField>
+        
+        <ResponseField name="regionCode" type="string | null" required>
+          Region or state code.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
 ```typescript
 {
-  status: 'ok' | 'error';        // Overall service status
-  version: string;               // API version
-  timestamp: Date;               // Server timestamp
-  storage: {                     // Storage system info
-    type: string;                // Storage type
-    available: boolean;          // Whether storage is available
+  status: 'ok' | 'error';
+  version: string;
+  timestamp: Date;
+  storage: {
+    type: string;
+    available: boolean;
   };
-  client: {                      // Client information
-    ip: string | null;           // Client IP address
-    userAgent: string | null;    // Client user agent
-    region: {                    // Client region
+  client: {
+    ip: string | null;
+    userAgent: string | null;
+    region: {
       countryCode: string | null;
       regionCode: string | null;
     };

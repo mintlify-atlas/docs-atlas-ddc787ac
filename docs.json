@@ -62,7 +62,9 @@
             "pages": [
               "integrations/overview",
               "integrations/google-tag-manager",
+              "integrations/google-tag",
               "integrations/posthog",
+              "integrations/databuddy",
               "integrations/meta-pixel",
               "integrations/tiktok-pixel",
               "integrations/linkedin-insights",
@@ -91,6 +93,8 @@
               "api/core/create-consent-store",
               "api/core/consent-state",
               "api/core/script-loader",
+              "api/core/iframe-blocker",
+              "api/core/tracking-blocker",
               "api/core/cookie-storage",
               "api/core/types"
             ]
@@ -102,6 +106,7 @@
               "api/react/cookie-banner",
               "api/react/consent-manager-dialog",
               "api/react/consent-manager-widget",
+              "api/react/frame",
               "api/react/hooks"
             ]
           },

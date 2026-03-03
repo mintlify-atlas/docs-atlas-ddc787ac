@@ -64,34 +64,71 @@ Input type for posting consent. This is a discriminated union based on the `type
 
 #### Cookie Banner Consent
 
+For cookie banner consent submissions. Preferences are required.
+
 ```typescript
 interface CookieBannerConsent {
+  /** Must be 'cookie_banner' */
   type: 'cookie_banner';
+  
+  /** Domain for which consent is being recorded */
   domain: string;
-  preferences: Record<string, boolean>;  // Required for cookie_banner
+  
+  /** 
+   * Consent preferences map (required for cookie_banner type)
+   * @example { "necessary": true, "marketing": true, "analytics": false }
+   */
+  preferences: Record<string, boolean>;
+  
+  /** Internal subject ID for the user */
   subjectId?: string;
+  
+  /** External subject ID (e.g., from your authentication system) */
   externalSubjectId?: string;
+  
+  /** Identity provider used (e.g., 'auth0', 'cognito') */
   identityProvider?: string;
+  
+  /** Additional metadata to store with the consent record */
   metadata?: Record<string, unknown>;
 }
 ```
 
 #### Policy-Based Consent
 
+For privacy policies, data processing agreements, or terms and conditions.
+
 ```typescript
 interface PolicyBasedConsent {
+  /** Type of policy consent */
   type: 'privacy_policy' | 'dpa' | 'terms_and_conditions';
+  
+  /** Domain for which consent is being recorded */
   domain: string;
+  
+  /** Specific policy ID to record consent for */
   policyId?: string;
+  
+  /** Optional consent preferences */
   preferences?: Record<string, boolean>;
+  
+  /** Internal subject ID for the user */
   subjectId?: string;
+  
+  /** External subject ID (e.g., from your authentication system) */
   externalSubjectId?: string;
+  
+  /** Identity provider used (e.g., 'auth0', 'cognito') */
   identityProvider?: string;
+  
+  /** Additional metadata to store with the consent record */
   metadata?: Record<string, unknown>;
 }
 ```
 
 #### Other Consent Types
+
+For marketing communications, age verification, or custom consent types.
 
 ```typescript
 interface OtherConsent {
@@ -105,50 +142,105 @@ interface OtherConsent {
 }
 ```
 
+**Full Type Definition:**
+
+```typescript
+type PostConsentInput = 
+  | CookieBannerConsent 
+  | PolicyBasedConsent 
+  | OtherConsent;
+```
+
 ### `PostConsentResponse`
+
+Response returned after successfully recording consent.
 
 ```typescript
 interface PostConsentResponse {
+  /** Unique consent record ID */
   id: string;
+  
+  /** Internal subject ID (if provided) */
   subjectId?: string;
+  
+  /** External subject ID (if provided) */
   externalSubjectId?: string;
+  
+  /** Unique domain ID */
   domainId: string;
+  
+  /** Domain name for which consent was recorded */
   domain: string;
+  
+  /** Type of consent that was recorded */
   type: PolicyType;
+  
+  /** Current status of the consent record */
   status: string;
+  
+  /** Unique consent record ID for audit trail */
   recordId: string;
+  
+  /** Additional metadata attached to the consent record */
   metadata?: Record<string, unknown>;
+  
+  /** Timestamp when consent was given */
   givenAt: Date;
 }
 ```
 
 ### `VerifyConsentInput`
 
+Input parameters for verifying consent.
+
 ```typescript
 interface VerifyConsentInput {
+  /** Domain to verify consent for */
   domain: string;
+  
+  /** Type of consent to verify */
   type: PolicyType;
+  
+  /** Internal subject ID (provide either this or externalSubjectId) */
   subjectId?: string;
+  
+  /** External subject ID (provide either this or subjectId) */
   externalSubjectId?: string;
+  
+  /** Specific policy ID to verify against */
   policyId?: string;
-  preferences?: string[];  // Array of purpose codes to verify
+  
+  /** Array of purpose codes to verify (e.g., ['marketing', 'analytics']) */
+  preferences?: string[];
 }
 ```
 
 ### `VerifyConsentResponse`
 
+Response indicating whether consent is valid and providing details.
+
 ```typescript
 interface VerifyConsentResponse {
+  /** Whether the consent is valid and all requirements are met */
   isValid: boolean;
+  
+  /** Array of reasons why consent is invalid (only present when isValid is false) */
   reasons?: string[];
+  
+  /** Consent details if valid (only present when isValid is true) */
   consent?: {
+    /** Unique consent record ID */
     id: string;
+    
+    /** Array of consent purpose IDs that were consented to */
     purposeIds: string[];
   };
 }
 ```
 
 ### `ShowBannerResponse`
+
+Response from the `showBanner()` method containing all information needed to display a consent banner.
 
 ```typescript
 interface ShowBannerResponse {
@@ -158,21 +250,71 @@ interface ShowBannerResponse {
   translations: TranslationInfo;
   branding: 'c15t' | 'consent' | 'none';
 }
+```
 
+### `JurisdictionInfo`
+
+Information about the detected jurisdiction and its consent requirements.
+
+```typescript
 interface JurisdictionInfo {
-  code: string;
-  name: string;
-  requiresConsent: boolean;
-  description?: string;
+  /**
+   * Jurisdiction code indicating the applicable privacy regulation
+   * - GDPR: EU/EEA/UK
+   * - CH: Switzerland
+   * - BR: Brazil (LGPD)
+   * - PIPEDA: Canada
+   * - AU: Australia
+   * - APPI: Japan
+   * - PIPA: South Korea
+   * - NONE: No specific requirements
+   */
+  code: 'GDPR' | 'CH' | 'BR' | 'PIPEDA' | 'AU' | 'APPI' | 'PIPA' | 'NONE';
+  
+  /**
+   * Human-readable message describing the jurisdiction's requirements
+   * @example "GDPR or equivalent regulations require a cookie banner."
+   */
+  message: string;
 }
+```
 
+### `LocationInfo`
+
+User's detected geographic location.
+
+```typescript
 interface LocationInfo {
+  /**
+   * ISO 3166-1 alpha-2 country code
+   * @example "US", "GB", "DE"
+   */
   countryCode: string | null;
+  
+  /**
+   * Region or state code within the country
+   * @example "CA" for California
+   */
   regionCode: string | null;
 }
+```
 
+### `TranslationInfo`
+
+Localized translations for consent banner UI elements.
+
+```typescript
 interface TranslationInfo {
+  /**
+   * Language code for the translations
+   * @example "en", "es", "de", "fr"
+   */
   language: string;
+  
+  /**
+   * Translation strings organized by component
+   * Supports both complete and partial translations for backward compatibility
+   */
   translations: {
     common: {
       acceptAll: string;
@@ -210,18 +352,28 @@ interface TranslationInfo {
 
 ### `IdentifyUserInput`
 
+Input parameters for linking an external ID to a consent record.
+
 ```typescript
 interface IdentifyUserInput {
+  /** The consent record ID to update */
   consentId: string;
+  
+  /** The external user ID to link */
   externalId: string;
+  
+  /** The identity provider (e.g., 'auth0', 'cognito') */
   identityProvider?: string;
 }
 ```
 
 ### `IdentifyUserResponse`
 
+Response indicating whether the identification was successful.
+
 ```typescript
 interface IdentifyUserResponse {
+  /** Whether the identification was successful */
   success: boolean;
 }
 ```
@@ -230,20 +382,42 @@ interface IdentifyUserResponse {
 
 ### `StatusResponse`
 
+Health check response providing service status and metrics.
+
 ```typescript
 interface StatusResponse {
+  /** Overall operational status of the service */
   status: 'ok' | 'error';
+  
+  /** Current API version string */
   version: string;
+  
+  /** Current server timestamp */
   timestamp: Date;
+  
+  /** Storage system status and information */
   storage: {
+    /** Storage system type (e.g., 'postgres', 'mongodb') */
     type: string;
+    
+    /** Whether the storage system is currently available */
     available: boolean;
   };
+  
+  /** Information about the requesting client */
   client: {
+    /** Client IP address if detectable */
     ip: string | null;
+    
+    /** Client user agent string if provided */
     userAgent: string | null;
+    
+    /** Client's detected geographic region */
     region: {
+      /** ISO country code */
       countryCode: string | null;
+      
+      /** Region or state code */
       regionCode: string | null;
     };
   };
@@ -335,6 +509,23 @@ interface APIError {
   }
   ```
 
+#### Purpose Errors
+
+- **`PURPOSES_NOT_FOUND`** (404)
+  ```typescript
+  {
+    preferences: string[];
+    foundPurposes: string[];
+  }
+  ```
+
+- **`PURPOSE_CREATION_FAILED`** (500)
+  ```typescript
+  {
+    purposeCode: string;
+  }
+  ```
+
 #### Consent Errors
 
 - **`NO_CONSENT_FOUND`** (404)
@@ -368,7 +559,16 @@ interface APIError {
   }
   ```
 
-## Usage Example
+- **`IDENTIFICATION_FAILED`** (500)
+  ```typescript
+  {
+    consentId: string;
+  }
+  ```
+
+## Usage Examples
+
+### Basic Consent Recording
 
 ```typescript
 import { c15tClient, type C15TClientOptions, type PostConsentInput } from '@c15t/node-sdk';
@@ -381,23 +581,175 @@ const config: C15TClientOptions = {
 
 const client = c15tClient(config);
 
-// Type-safe consent posting
+// Type-safe cookie banner consent posting
 const consentData: PostConsentInput = {
   type: 'cookie_banner',
   domain: 'example.com',
   preferences: {
+    necessary: true,
     marketing: true,
     analytics: false,
   },
   externalSubjectId: 'user-123',
+  metadata: {
+    userAgent: 'Mozilla/5.0...',
+    ipAddress: '192.168.1.1',
+  },
 };
 
 try {
   const response = await client.consent.post(consentData);
   console.log('Consent ID:', response.id);
+  console.log('Recorded at:', response.givenAt);
 } catch (error) {
   // Error is typed as APIError
   console.error('Failed:', error);
+}
+```
+
+### Verifying Consent
+
+```typescript
+import type { VerifyConsentInput, VerifyConsentResponse } from '@c15t/node-sdk';
+
+const verifyData: VerifyConsentInput = {
+  domain: 'example.com',
+  type: 'cookie_banner',
+  externalSubjectId: 'user-123',
+  preferences: ['marketing', 'analytics'],
+};
+
+const verification: VerifyConsentResponse = await client.consent.verify(verifyData);
+
+if (verification.isValid) {
+  console.log('User has valid consent');
+  console.log('Consented purposes:', verification.consent?.purposeIds);
+  // Enable tracking/analytics
+} else {
+  console.log('Consent not valid:', verification.reasons);
+  // Show consent banner
+}
+```
+
+### Recording Policy Consent
+
+```typescript
+import type { PostConsentInput } from '@c15t/node-sdk';
+
+// Privacy policy acceptance
+const policyConsent: PostConsentInput = {
+  type: 'privacy_policy',
+  domain: 'example.com',
+  policyId: 'policy-v2.0',
+  externalSubjectId: 'user-123',
+  metadata: {
+    acceptedVia: 'signup_flow',
+    timestamp: new Date().toISOString(),
+  },
+};
+
+const response = await client.consent.post(policyConsent);
+console.log('Policy consent recorded:', response.recordId);
+```
+
+### Identifying Anonymous Users
+
+```typescript
+import type { IdentifyUserInput } from '@c15t/node-sdk';
+
+// After user logs in, link their anonymous consent to their authenticated ID
+const identifyData: IdentifyUserInput = {
+  consentId: 'consent-abc-123',  // From previous anonymous consent
+  externalId: 'auth0|user-456',
+  identityProvider: 'auth0',
+};
+
+const result = await client.consent.identify(identifyData);
+if (result.success) {
+  console.log('User identified and consent linked');
+}
+```
+
+### Complete Flow Example
+
+```typescript
+import { c15tClient } from '@c15t/node-sdk';
+
+const client = c15tClient({ baseUrl: 'https://api.c15t.com' });
+
+// 1. Check if banner should be shown
+const bannerInfo = await client.consent.showBanner();
+
+if (bannerInfo.showConsentBanner) {
+  console.log('Show banner for:', bannerInfo.jurisdiction.code);
+  
+  // 2. User interacts with banner and makes choices
+  const consentResponse = await client.consent.post({
+    type: 'cookie_banner',
+    domain: 'example.com',
+    preferences: {
+      necessary: true,
+      marketing: true,
+      analytics: false,
+    },
+    externalSubjectId: 'anonymous-session-id',
+  });
+  
+  // 3. Later, when user logs in
+  await client.consent.identify({
+    consentId: consentResponse.id,
+    externalId: 'auth0|user-123',
+    identityProvider: 'auth0',
+  });
+  
+  // 4. Verify consent before performing analytics
+  const verification = await client.consent.verify({
+    domain: 'example.com',
+    type: 'cookie_banner',
+    externalSubjectId: 'auth0|user-123',
+    preferences: ['analytics'],
+  });
+  
+  if (verification.isValid) {
+    // Enable analytics tracking
+  }
+}
+```
+
+### Error Handling
+
+```typescript
+import type { APIError } from '@c15t/node-sdk';
+
+try {
+  const response = await client.consent.post({
+    type: 'cookie_banner',
+    domain: 'example.com',
+    preferences: {
+      marketing: true,
+    },
+    externalSubjectId: 'user-123',
+  });
+  
+  console.log('Success:', response.id);
+} catch (error) {
+  const apiError = error as APIError;
+  
+  console.error('Status:', apiError.status);
+  console.error('Error:', apiError.error);
+  
+  // Handle specific error codes
+  if (apiError.status === 422 && apiError.data) {
+    // Input validation failed
+    console.error('Form errors:', apiError.data.formErrors);
+    console.error('Field errors:', apiError.data.fieldErrors);
+  } else if (apiError.status === 404) {
+    // Resource not found
+    console.error('Resource not found:', apiError.data);
+  } else if (apiError.status === 500) {
+    // Server error
+    console.error('Server error occurred');
+  }
 }
 ```
 

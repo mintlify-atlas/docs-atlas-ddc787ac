@@ -1,0 +1,332 @@
+---
+title: "Databuddy"
+description: "Integrate Databuddy analytics with consent-aware tracking"
+icon: "chart-simple"
+---
+
+## Overview
+
+Databuddy integration with built-in consent management. This integration controls tracking by toggling Databuddy's `disabled` state based on user consent, ensuring compliance with user privacy preferences.
+
+<Info>
+  Databuddy is categorized as **measurement** by default.
+</Info>
+
+## Installation
+
+<CodeGroup>
+```bash npm
+npm install @c15t/scripts c15t
+```
+
+```bash yarn
+yarn add @c15t/scripts c15t
+```
+
+```bash pnpm
+pnpm add @c15t/scripts c15t
+```
+
+```bash bun
+bun add @c15t/scripts c15t
+```
+</CodeGroup>
+
+## Basic usage
+
+<CodeGroup>
+```typescript React
+import { loadScripts } from 'c15t';
+import { databuddy } from '@c15t/scripts/databuddy';
+import { useEffect } from 'react';
+
+export function App() {
+  useEffect(() => {
+    const databuddyScript = databuddy({
+      clientId: 'db_1234567890abcdef',
+      options: {
+        trackScreenViews: true,
+        trackOutgoingLinks: true,
+      },
+    });
+
+    loadScripts([databuddyScript], {
+      consents: {
+        necessary: true,
+        functionality: false,
+        measurement: true, // Databuddy requires measurement consent
+        marketing: false,
+        experience: false,
+      },
+    });
+  }, []);
+
+  return <div>Your app</div>;
+}
+```
+
+```typescript Next.js
+import { loadScripts } from 'c15t';
+import { databuddy } from '@c15t/scripts/databuddy';
+import { useEffect } from 'react';
+
+export default function RootLayout({ children }) {
+  useEffect(() => {
+    const databuddyScript = databuddy({
+      clientId: 'db_1234567890abcdef',
+      options: {
+        trackScreenViews: true,
+        trackOutgoingLinks: true,
+      },
+    });
+
+    loadScripts([databuddyScript], {
+      consents: {
+        necessary: true,
+        functionality: false,
+        measurement: true,
+        marketing: false,
+        experience: false,
+      },
+    });
+  }, []);
+
+  return <html><body>{children}</body></html>;
+}
+```
+
+```typescript Vanilla JS
+import { loadScripts } from 'c15t';
+import { databuddy } from '@c15t/scripts/databuddy';
+
+const databuddyScript = databuddy({
+  clientId: 'db_1234567890abcdef',
+  options: {
+    trackScreenViews: true,
+    trackOutgoingLinks: true,
+  },
+});
+
+loadScripts([databuddyScript], {
+  consents: {
+    necessary: true,
+    functionality: false,
+    measurement: true,
+    marketing: false,
+    experience: false,
+  },
+});
+```
+</CodeGroup>
+
+## Configuration
+
+### Options
+
+<ParamField path="clientId" type="string" required>
+  Your Databuddy client ID.
+  
+  **Example**: `db_1234567890abcdef`
+</ParamField>
+
+<ParamField path="apiUrl" type="string" default="https://basket.databuddy.cc">
+  Your Databuddy API URL.
+  
+  **Example**: `https://basket.databuddy.cc`
+</ParamField>
+
+<ParamField path="scriptUrl" type="string" default="https://cdn.databuddy.cc/databuddy.js">
+  The Databuddy script URL.
+  
+  **Example**: `https://cdn.databuddy.cc/databuddy.js`
+</ParamField>
+
+<ParamField path="options" type="Record<string, unknown>">
+  Additional configuration options for Databuddy.
+  
+  **Example**: `{ trackScreenViews: true, trackOutgoingLinks: true, trackPerformance: true, samplingRate: 1.0 }`
+</ParamField>
+
+<ParamField path="script" type="Partial<Script>">
+  Override or extend default script values.
+  
+  **Defaults**:
+  - `id`: `'databuddy'`
+  - `category`: `'measurement'`
+  - `src`: `https://cdn.databuddy.cc/databuddy.js`
+  - `async`: `true`
+  - `alwaysLoad`: `true`
+</ParamField>
+
+## Advanced usage
+
+### Configure tracking options
+
+Customize Databuddy's tracking behavior:
+
+```typescript
+const databuddyScript = databuddy({
+  clientId: 'db_1234567890abcdef',
+  options: {
+    trackScreenViews: true,
+    trackOutgoingLinks: true,
+    trackPerformance: true,
+    samplingRate: 1.0,
+  },
+});
+```
+
+### Custom API URL
+
+Use a custom API endpoint:
+
+```typescript
+const databuddyScript = databuddy({
+  clientId: 'db_1234567890abcdef',
+  apiUrl: 'https://analytics.yourdomain.com',
+});
+```
+
+### Self-hosted script
+
+Use a self-hosted Databuddy script:
+
+```typescript
+const databuddyScript = databuddy({
+  clientId: 'db_1234567890abcdef',
+  scriptUrl: 'https://cdn.yourdomain.com/databuddy.js',
+});
+```
+
+### Custom callbacks
+
+Add custom logic to the script lifecycle:
+
+```typescript
+const databuddyScript = databuddy({
+  clientId: 'db_1234567890abcdef',
+  options: {
+    trackScreenViews: true,
+  },
+  script: {
+    onLoad: ({ hasConsent }) => {
+      if (hasConsent) {
+        console.log('Databuddy loaded and tracking enabled');
+      }
+    },
+    onConsentChange: ({ hasConsent }) => {
+      console.log('Databuddy consent changed:', hasConsent);
+    },
+  },
+});
+```
+
+### Override consent category
+
+Change the consent category if needed:
+
+```typescript
+const databuddyScript = databuddy({
+  clientId: 'db_1234567890abcdef',
+  script: {
+    category: 'marketing', // Override default 'measurement'
+  },
+});
+```
+
+## How it works
+
+The Databuddy integration manages consent through a comprehensive lifecycle:
+
+1. **Before script loads** (`onBeforeLoad`): Seeds `window.databuddyConfig` with client configuration, including `disabled: !hasConsent` to ensure Databuddy initializes in the correct state
+
+2. **On script load** (`onLoad`): After Databuddy initializes, verifies that `window.databuddy.options.disabled` matches the current consent state
+
+3. **On consent change** (`onConsentChange`): Dynamically toggles `window.databuddy.options.disabled` to enable tracking when consent is granted or disable tracking when consent is revoked
+
+<Info>
+  The script always loads (`alwaysLoad: true`) but tracking is controlled via the `disabled` flag, allowing Databuddy to remain present in the DOM while respecting consent boundaries.
+</Info>
+
+## Tracking events
+
+After consent is granted, use Databuddy's standard API:
+
+```typescript
+// Track custom event
+window.databuddy.track('button_clicked', {
+  button_name: 'sign_up',
+  page: 'home',
+});
+
+// Track screen view
+window.databuddy.screenView('Dashboard', {
+  user_type: 'premium',
+});
+
+// Track custom event (alternative method)
+window.databuddy.trackCustomEvent('purchase_completed', {
+  product_id: '12345',
+  amount: 99.99,
+  currency: 'USD',
+});
+
+// Set global properties
+window.databuddy.setGlobalProperties({
+  app_version: '1.2.3',
+  environment: 'production',
+});
+
+// Clear tracked data
+window.databuddy.clear();
+
+// Flush pending events
+window.databuddy.flush();
+```
+
+## Consent state management
+
+The integration automatically manages Databuddy's tracking state:
+
+```typescript
+// When consent is granted:
+// window.databuddy.options.disabled = false ✓
+
+// When consent is revoked:
+// window.databuddy.options.disabled = true ✓
+```
+
+This ensures tracking only occurs when the user has granted measurement consent.
+
+## TypeScript
+
+Full TypeScript support with type inference:
+
+```typescript
+import type { Script } from 'c15t';
+import { databuddy } from '@c15t/scripts/databuddy';
+import type { DatabuddyConsentOptions } from '@c15t/scripts/databuddy';
+
+const options: DatabuddyConsentOptions = {
+  clientId: 'db_1234567890abcdef',
+  apiUrl: 'https://basket.databuddy.cc',
+  options: {
+    trackScreenViews: true,
+    trackOutgoingLinks: true,
+  },
+};
+
+const script: Script = databuddy(options);
+```
+
+## Resources
+
+<CardGroup cols={2}>
+  <Card title="Databuddy Documentation" icon="book" href="https://databuddy.cc/docs">
+    Official Databuddy documentation
+  </Card>
+  
+  <Card title="Source Code" icon="github" href="https://github.com/c15t/c15t/blob/main/packages/scripts/src/databuddy.ts">
+    View the integration source code
+  </Card>
+</CardGroup>
