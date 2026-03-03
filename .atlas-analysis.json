@@ -1,0 +1,175 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "c15t",
+  "projectDescription": "A developer-first consent management platform for JavaScript frameworks with GDPR compliance",
+  "theme": "palm",
+  "primaryColor": "#3B82F6",
+  "lightColor": "#60A5FA",
+  "darkColor": "#2563EB",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Framework Guides",
+            "pages": [
+              "frameworks/javascript/quickstart",
+              "frameworks/javascript/script-loader",
+              "frameworks/javascript/internationalization",
+              "frameworks/javascript/callbacks",
+              "frameworks/javascript/iframe-blocking",
+              "frameworks/react/quickstart",
+              "frameworks/react/headless",
+              "frameworks/react/components",
+              "frameworks/react/hooks",
+              "frameworks/nextjs/quickstart",
+              "frameworks/nextjs/app-router",
+              "frameworks/nextjs/pages-router",
+              "frameworks/nextjs/server-components"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/consent-state",
+              "concepts/consent-types",
+              "concepts/storage",
+              "concepts/compliance-regions"
+            ]
+          },
+          {
+            "group": "Integrations",
+            "pages": [
+              "integrations/overview",
+              "integrations/google-tag-manager",
+              "integrations/posthog",
+              "integrations/meta-pixel",
+              "integrations/tiktok-pixel",
+              "integrations/linkedin-insights",
+              "integrations/microsoft-uet",
+              "integrations/x-pixel"
+            ]
+          },
+          {
+            "group": "Self-Hosting",
+            "pages": [
+              "self-host/overview",
+              "self-host/v2/quickstart",
+              "self-host/v2/configuration",
+              "self-host/v2/database-adapters",
+              "self-host/v2/deployment"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Core Package",
+            "pages": [
+              "api/core/create-consent-store",
+              "api/core/consent-state",
+              "api/core/script-loader",
+              "api/core/cookie-storage",
+              "api/core/types"
+            ]
+          },
+          {
+            "group": "React Package",
+            "pages": [
+              "api/react/provider",
+              "api/react/cookie-banner",
+              "api/react/consent-manager-dialog",
+              "api/react/consent-manager-widget",
+              "api/react/hooks"
+            ]
+          },
+          {
+            "group": "Next.js Package",
+            "pages": [
+              "api/nextjs/consent-provider",
+              "api/nextjs/server-components",
+              "api/nextjs/middleware"
+            ]
+          },
+          {
+            "group": "Backend Package",
+            "pages": [
+              "api/backend/core",
+              "api/backend/router",
+              "api/backend/contracts",
+              "api/backend/database-adapters"
+            ]
+          },
+          {
+            "group": "Node SDK",
+            "pages": [
+              "api/node-sdk/client",
+              "api/node-sdk/methods",
+              "api/node-sdk/types"
+            ]
+          },
+          {
+            "group": "CLI",
+            "pages": [
+              "api/cli/commands",
+              "api/cli/init",
+              "api/cli/generate",
+              "api/cli/migrate"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Contributing",
+        "groups": [
+          {
+            "group": "Open Source",
+            "pages": [
+              "oss/contributing",
+              "oss/code-of-conduct",
+              "oss/architecture",
+              "oss/development-setup"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Framework-agnostic consent management with React, Next.js, and vanilla JavaScript support",
+    "GDPR, CCPA, and LGPD compliance out of the box",
+    "Headless UI components with full customization",
+    "Script loader with automatic consent gating",
+    "Internationalization support with 40+ languages",
+    "Self-hostable backend with multiple database adapters",
+    "TypeScript-first with complete type safety",
+    "Server-side rendering support",
+    "Comprehensive CLI for scaffolding and migrations"
+  ],
+  "publicApiSurface": [
+    "createConsentManagerStore() - Core consent state management",
+    "ConsentProvider - React context provider",
+    "CookieBanner - Prebuilt cookie banner component",
+    "ConsentManagerDialog - Consent preferences dialog",
+    "useConsent() - React hook for consent state",
+    "useConsentBanner() - React hook for banner control",
+    "loadScripts() - Dynamic script loader with consent gating",
+    "saveConsentToStorage() - Persist consent to cookies/localStorage",
+    "getConsentFromStorage() - Retrieve stored consent",
+    "createTrackingBlocker() - Block tracking scripts until consent",
+    "createIframeBlocker() - Block iframes until consent",
+    "@c15t/backend - Self-hostable consent backend",
+    "@c15t/cli - Command-line scaffolding tool",
+    "@c15t/node-sdk - Node.js API client"
+  ]
+}
